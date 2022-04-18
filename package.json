@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@sapphire/decorators": "^4.3.4",
+    "@sapphire/ts-config": "^3.3.4",
+    "discord.js": "^14.0.0-dev.1650240532-9ef7ffd"
+  }
+}
