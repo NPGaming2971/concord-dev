@@ -1,10 +1,14 @@
-import { Enumerable } from "@sapphire/decorators";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { CommandManager } from "../manager/CommandManager";
+import { Enumerable } from "../utils/decorators";
 import { Logger } from "./Logger";
 
-export class ConcordClient extends Client {
+export class ConcordClient extends Client<true> {
     @Enumerable(false)
     public override logger = Logger
+
+    @Enumerable(false)
+    public override commands = new CommandManager(this) as CommandManager
 
 	constructor() {
 		super({
@@ -22,7 +26,7 @@ export class ConcordClient extends Client {
 
 declare module 'discord.js' {
     interface Client {
-        logger: Logger;
-        
+        logger: typeof Logger;
+        commands: CommandManager
     }
 }

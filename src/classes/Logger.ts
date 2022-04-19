@@ -21,7 +21,7 @@ const debug = (namespace: string, message: any) => {
 };
 
 export class Logger {
-    public static info = info
-    public static error = error
-    public static debug = debug
+    static info = info
+    static error = error
+    static debug = debug
 }
