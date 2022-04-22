@@ -1,7 +1,6 @@
 import type { Snowflake } from "@sapphire/snowflake";
 import type { ChannelType } from "discord-api-types/v10";
 import type {
-	ApplicationCommandOptionChoiceData,
 	ApplicationCommandOptionData,
 	AutocompleteInteraction,
 	Awaitable,
@@ -10,15 +9,18 @@ import type {
 	PermissionResolvable,
 } from "discord.js";
 import { Collection } from "discord.js";
+import type { APIApplicationCommand } from "discord.js/node_modules/discord-api-types/v10";
+import { Converters } from "../utils/converters";
 
 export class Command {
-
-	public data: CommandConstructor['data']
+	public readonly data: CommandConstructor["data"];
 	public cooldowns = new Collection<string, number>();
 	public path?: string;
+	private readonly restraints: CommandConstructor["restraints"];
 
 	constructor(data: CommandConstructor) {
-		this.data = data.data
+		this.data = data.data;
+		this.restraints = data.restraints;
 	}
 
 	/**
@@ -66,6 +68,17 @@ export class Command {
 	public supportAutocomplete(): this is AutocompleteCommand {
 		return Reflect.has(this, "autocompleteRun");
 	}
+	/**
+	 * Whether this command is set to be global.
+	 */
+	public isGlobal() {
+		return this.restraints?.global ?? false;
+	}
+
+	public toJSON(): Omit<APIApplicationCommand, 'version' | 'description_localized' | 'name_localized' | 'guild_id' | 'application_id' | 'id'> {
+		//@ts-expect-error
+		return Converters.camelCaseKeysToUnderscore(this.data)
+	}
 }
 
 export type ContextMenuCommand = Command &
@@ -90,7 +103,7 @@ export interface CommandConstructor {
 	};
 	help?: {
 		usage?: string;
-		examples?: string[];
+		examples?: string[][];
 	};
 	preconditions?: {
 		canRunIn?: ChannelType[];

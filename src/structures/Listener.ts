@@ -24,12 +24,15 @@ export abstract class Listener<E extends keyof ClientEvents> {
 
 
 	public abstract run(...args: ClientEvents[E]): unknown;
-
+	
 	private async _run(...args: unknown[]) {
         //@ts-expect-error
 		const result = await Util.fromAsync(() => this.run(...args));
 	}
 
+	/**
+	 * Unload this event from the emitter.
+	 */
 	public unload() {
 		if (this._listener) {
 			const emitter = this.emitter!;
@@ -43,6 +46,9 @@ export abstract class Listener<E extends keyof ClientEvents> {
 		}
 	}
 
+	/**
+	 * Listen to this event from the emitter.
+	 */
 	public load() {
 		if (this._listener) {
 			const emitter = this.emitter!;

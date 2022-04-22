@@ -4,6 +4,7 @@ import type {
 	CommandAndEventLoadOptions,
 	CommandLoadOptions,
 } from "../typings";
+import { REST } from "@discordjs/rest";
 import { Enumerable } from "../utils/decorators";
 import glob from "glob";
 import { promisify } from "util";
@@ -11,8 +12,11 @@ const globPromise = promisify(glob);
 import { join } from "path";
 import type { Listener } from "../structures/Listener";
 import { Util } from "../utils/utils";
+import { Routes } from "discord.js/node_modules/discord-api-types/v10";
+import { Constants } from "../typings/constants";
 
 export class CommandManager {
+	
 	@Enumerable(false)
 	public readonly cache = new LimitedCollection<string, Command>({
 		maxSize: 100,
@@ -57,6 +61,7 @@ export class CommandManager {
 			await this.loadCommands(path.commands, {
 				errorOnNoMatches: option.options?.errorOnNoMatches,
 			});
+			if (option.options?.deploy) this.deploy();
 		}
 
 		if (path.events) {
@@ -69,15 +74,38 @@ export class CommandManager {
 	}
 
 	public deploy() {
-		new Proxy(this.client, {
-			set: function (target, key, value) {
-				if (key === "readyTimestamp") {
-					console.log(`${key} set to ${value}`);
-					target[key] = value;
-				}
-				return true;
-			},
+		//Preconditions: CommandManager.cache is populated
+
+		if (this.cache.size === 0)
+			throw new Error("CommandManager.cache is empty.");
+
+		const rest = new REST({ version: "10" }).setToken(process.env.TOKEN!);
+		const clientId = Constants.CLIENT_ID;
+		const targetGuildId: string[] = ["755892553827483799"];
+		//TODO
+		const data = {
+			global: [] as any[],
+			local: [] as any[],
+		};
+
+		this.cache.map((command) => {
+			data[command.isGlobal() ? "global" : "local"].push(command.toJSON());
 		});
+
+		if (data.local.length)
+			targetGuildId.map((id) =>
+				rest
+					.put(Routes.applicationGuildCommands(clientId, id), { body: data.local })
+					.then(() =>
+						this.client.logger.info( this.constructor.name, `Successfully deployed ${data.local.length} local command(s) on guild <${id}>.`)
+					)
+					.catch((err) => this.client.logger.error(this.constructor.name, err))
+			);
+		if (data.global.length)
+			rest
+				.put(Routes.applicationCommands(clientId), { body: data.global })
+				.then(() => this.client.logger.info(this.constructor.name, `Successfully deployed ${data.global.length} global command(s).`))
+				.catch((err) => this.client.logger.error(this.constructor.name, err))
 	}
 
 	public async loadCommands(
@@ -97,9 +125,10 @@ export class CommandManager {
 
 			constructedCommand.path = file;
 
-			this.loadToCache(constructedCommand)
+			this.loadToCache(constructedCommand);
 		}
 	}
+	
 	private async loadEvents(
 		globPattern: string,
 		options?: CommandAndEventLoadOptions
@@ -113,11 +142,13 @@ export class CommandManager {
 			delete require.cache[require.resolve(file)];
 			const event = require(file).default;
 
-			const constructedEvent = Reflect.construct(event, [this.client]) as Listener<any>;
+			const constructedEvent = Reflect.construct(event, [
+				this.client,
+			]) as Listener<any>;
 
 			constructedEvent.path = file;
 
-			constructedEvent.load()
+			constructedEvent.load();
 		}
 	}
 
