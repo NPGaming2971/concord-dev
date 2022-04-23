@@ -2,14 +2,12 @@ import { EmbedBuilder } from "@discordjs/builders";
 import type { ChatInputCommandInteraction } from "discord.js";
 import { Command } from "../structures/Command";
 
-export default class PingCommand extends Command {
+export class PingCommand extends Command {
 	constructor() {
 		super({ data: { name: "ping", description: "Receive the bot ping" } });
 	}
-	public override async chatInputRun(
-		interaction: ChatInputCommandInteraction
-	): Promise<void> {
-		await interaction.deferReply()
+	public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<void> {
+		await interaction.deferReply();
 
 		const userPing = new Date().getTime() - interaction.createdTimestamp;
 		const websocketPing = Math.round(interaction.client.ws.ping);

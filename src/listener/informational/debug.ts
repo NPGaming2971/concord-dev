@@ -2,7 +2,7 @@ import type { Client } from "discord.js";
 import { Logger } from "../../classes/Logger";
 import { Listener } from "../../structures/Listener";
 
-export default class DebugEvent extends Listener<"debug"> {
+export class DebugEvent extends Listener<"debug"> {
 	constructor(client: Client) {
 		super(client, {
 			name: "debug",

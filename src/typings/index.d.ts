@@ -1,5 +1,6 @@
 export type CommandAndEventLoadOptions = {
 	errorOnNoMatches?: boolean;
+	errorOnEmptyFile?: boolean;
 };
 
 export type CommandLoadOptions = {
@@ -15,6 +16,7 @@ export type CommandLoadOptions = {
         subfolderDepth?: number;
         deploy?: boolean;
 		errorOnNoMatches?: boolean;
+		errorOnEmptyFile?: boolean;
     };
 };
 

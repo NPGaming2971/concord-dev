@@ -11,7 +11,7 @@ import {
 import { Command } from "../../structures/Command";
 import { inspect } from "node:util";
 import fetch from "node-fetch";
-export default class EvalCommand extends Command {
+export class EvalCommand extends Command {
 	constructor() {
 		super({
 			data: {
@@ -62,10 +62,9 @@ export default class EvalCommand extends Command {
 			const codeString = modalInteraction.fields.getTextInputValue("concord:eval/codeInput");
 			await modalInteraction.deferReply();
 			try {
-				interaction.guild
 				const executionStart = new Date().getTime();
 				let evaled = asyncMode
-					? await new AsyncFunction("interaction", 'require', `return ${codeString}`)(
+					? await new AsyncFunction("interaction", "require", `return ${codeString}`)(
 							modalInteraction,
 							require
 					  )

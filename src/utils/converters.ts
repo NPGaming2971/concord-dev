@@ -1,5 +1,5 @@
 export class Converters {
-	static camelCaseKeysToUnderscore(obj: { [key: string]: any }) {
+	static camelCaseKeysToUnderscore(obj: any): any {
 		if (typeof obj != "object") return obj;
 		let newName;
 		for (var oldName in obj) {
@@ -19,5 +19,17 @@ export class Converters {
 			}
 		}
 		return obj;
+	}
+
+	static stringTemplateParser(
+		expression: string,
+		valueObj: { [key: string]: string }
+	) {
+		const templateMatcher = /{{\s?([^{}\s]*)\s?}}/g;
+		let text = expression.replace(templateMatcher, (_, value, __) => {
+			value = valueObj[value];
+			return value;
+		});
+		return text;
 	}
 }

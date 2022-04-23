@@ -2,7 +2,7 @@ import type { Client } from "discord.js";
 import type { ConcordClient } from "../../classes/ConcordClient";
 import { Listener } from "../../structures/Listener";
 
-export default class ReadyEvent extends Listener<"ready"> {
+export class ReadyEvent extends Listener<"ready"> {
 	constructor(client: Client) {
 		super(client, { name: "ready", once: true });
 	}

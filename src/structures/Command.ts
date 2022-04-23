@@ -1,15 +1,17 @@
 import type { Snowflake } from "@sapphire/snowflake";
 import type { ChannelType } from "discord-api-types/v10";
-import type {
+import {
+	ApplicationCommandData,
 	ApplicationCommandOptionData,
+	ApplicationCommandType,
 	AutocompleteInteraction,
 	Awaitable,
 	ChatInputCommandInteraction,
-	ContextMenuCommandInteraction,
+	MessageContextMenuCommandInteraction,
 	PermissionResolvable,
+	UserContextMenuCommandInteraction,
 } from "discord.js";
 import { Collection } from "discord.js";
-import type { APIApplicationCommand } from "discord.js/node_modules/discord-api-types/v10";
 import { Converters } from "../utils/converters";
 
 export class Command {
@@ -27,25 +29,27 @@ export class Command {
 	 * Executes the application command's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public chatInputRun?(
-		interaction: ChatInputCommandInteraction
+	public chatInputRun?(interaction: ChatInputCommandInteraction): Awaitable<unknown>;
+
+	/**
+	 * Executes the message context menu's logic.
+	 * @param interaction The interaction that triggered the command.
+	 */
+	public messageContextMenuRun?(
+		interaction: MessageContextMenuCommandInteraction
 	): Awaitable<unknown>;
 
 	/**
-	 * Executes the context menu's logic.
+	 * Executes the user context menu's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public contextMenuRun?(
-		interaction: ContextMenuCommandInteraction
-	): Awaitable<unknown>;
+	public userContextMenuRun?(interaction: UserContextMenuCommandInteraction): Awaitable<unknown>;
 
 	/**
 	 * Executes the autocomplete command's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public autocompleteRun?(
-		interaction: AutocompleteInteraction
-	): Awaitable<unknown>;
+	public autocompleteRun?(interaction: AutocompleteInteraction): Awaitable<unknown>;
 
 	/**
 	 * Whether this command supports chat input interaction.
@@ -54,12 +58,29 @@ export class Command {
 	public supportChatInput(): this is ChatInputCommand {
 		return Reflect.has(this, "chatInputRun");
 	}
+
+	/**
+	 * Whether this command supports message context menu interaction.
+	 * @returns {boolean}
+	 */
+	public supportMessageContextMenu(): this is MessageContextMenuCommand {
+		return Reflect.has(this, "messageContextMenuRun");
+	}
+
+	/**
+	 * Whether this command supports user context menu interaction.
+	 * @returns {boolean}
+	 */
+	public supportUserContextMenu(): this is UserContextMenuCommand {
+		return Reflect.has(this, "userContextMenuRun");
+	}
+
 	/**
 	 * Whether this command supports context menu interaction.
 	 * @returns {boolean}
 	 */
 	public supportContextMenu(): this is ContextMenuCommand {
-		return Reflect.has(this, "supportContextMenu");
+		return Reflect.has(this, "userContextMenuRun") || Reflect.has(this, "messageContextMenuRun");
 	}
 	/**
 	 * Whether this command supports autocomplete interaction.
@@ -75,18 +96,46 @@ export class Command {
 		return this.restraints?.global ?? false;
 	}
 
-	public toJSON(): Omit<APIApplicationCommand, 'version' | 'description_localized' | 'name_localized' | 'guild_id' | 'application_id' | 'id'> {
-		//@ts-expect-error
-		return Converters.camelCaseKeysToUnderscore(this.data)
+	public toJSON(): ApplicationCommandData[] {
+		const data: ApplicationCommandData[] = [];
+
+		const { description, name, options } = this.data;
+
+		if (this.supportContextMenu()) {
+			data.push(
+				Converters.camelCaseKeysToUnderscore({
+					description,
+					name,
+					type: this.supportMessageContextMenu()
+						? ApplicationCommandType.Message
+						: ApplicationCommandType.User,
+				})
+			);
+		}
+
+		if (this.supportChatInput()) {
+			data.push(
+				Converters.camelCaseKeysToUnderscore({
+					description,
+					name,
+					options,
+					type: ApplicationCommandType.ChatInput,
+				})
+			);
+		}
+		return data
 	}
 }
 
-export type ContextMenuCommand = Command &
-	Required<Pick<Command, "contextMenuRun">>;
-export type AutocompleteCommand = Command &
-	Required<Pick<Command, "autocompleteRun">>;
-export type ChatInputCommand = Command &
-	Required<Pick<Command, "chatInputRun">>;
+export type ContextMenuCommand = MessageContextMenuCommand | UserContextMenuCommand;
+
+export type MessageContextMenuCommand = Command & Required<Pick<Command, "messageContextMenuRun">>;
+
+export type UserContextMenuCommand = Command & Required<Pick<Command, "userContextMenuRun">>;
+
+export type AutocompleteCommand = Command & Required<Pick<Command, "autocompleteRun">>;
+
+export type ChatInputCommand = Command & Required<Pick<Command, "chatInputRun">>;
 
 export enum CooldownScope {
 	Global = 0,

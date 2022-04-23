@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { Command } from "../../structures/Command";
 
-export default class ReloadCommand extends Command {
+export class ReloadCommand extends Command {
 	constructor() {
 		super({
 			data: {
