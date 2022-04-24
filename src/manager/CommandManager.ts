@@ -71,7 +71,7 @@ export class CommandManager {
 	public deploy() {
 
 		//Preconditions: CommandManager.cache is populated
-		if (this.cache.size === 0) throw new Error("CommandManager.cache is empty.");
+		if (this.cache.size === 0) throw new Error("CommandManager.prototype.cache is empty.");
 
 		const rest = new REST({ version: "10" }).setToken(process.env.TOKEN!);
 		const clientId = Constants.CLIENT_ID;
@@ -118,7 +118,13 @@ export class CommandManager {
 	}
 
 	public async loadCommands(globPattern: string, options?: CommandAndEventLoadOptions) {
+
+		console.log(globPattern)
+
 		const files = await globPromise(globPattern);
+
+		console.log(files)
+
 		if (!files.length && options?.errorOnNoMatches) {
 			throw new Error("Specified pattern has no matches.");
 		}
