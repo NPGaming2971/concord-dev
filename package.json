@@ -1,6 +1,6 @@
 {
   "name": "concord-bot",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Concord supports conversing between multi-servers. Packed with feature and full customability.",
   "dependencies": {
     "@discordjs/rest": "^0.4.1",
