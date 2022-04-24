@@ -39,8 +39,8 @@ export class CommandManager {
 
 		path = option?.extensions
 			? option.extensions.length > 1
-				? `${path}\\*.{${option.extensions.join(",")}}`
-				: `${path}\\*.${option.extensions[0]}`
+				? `${path}/*.{${option.extensions.join(",")}}`
+				: `${path}/*.${option.extensions[0]}`
 			: join(path, "*");
 		return path;
 	}
