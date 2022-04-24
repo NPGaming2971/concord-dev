@@ -3,14 +3,17 @@
     "@discordjs/rest": "^0.4.1",
     "@sapphire/ts-config": "^3.3.4",
     "@types/glob": "^7.2.0",
+    "@types/string-similarity": "^4.0.0",
     "discord.js": "^14.0.0-dev.1650413390-585169f",
     "dotenv": "^16.0.0",
     "glob": "^7.2.0",
-    "node-fetch": "2"
+    "node-fetch": "2",
+    "string-similarity": "^4.0.4"
   },
   "devDependencies": {},
   "scripts": {
     "run": "ts-node src/index.ts"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "yarn@1.22.15"
 }

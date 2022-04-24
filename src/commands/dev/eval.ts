@@ -11,6 +11,7 @@ import {
 import { Command } from "../../structures/Command";
 import { inspect } from "node:util";
 import fetch from "node-fetch";
+import { Constants } from "../../typings/constants";
 export class EvalCommand extends Command {
 	constructor() {
 		super({
@@ -105,7 +106,7 @@ export class EvalCommand extends Command {
 								value: `${executionEnd - executionStart}ms`,
 								inline: true,
 							}
-						);
+						).setColor(Constants.DEFAULT_COLOR);
 					modalInteraction.editReply({
 						embeds: [embed],
 					});

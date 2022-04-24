@@ -101,6 +101,11 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.24.tgz#20ba1bf69c1b4ab405c7a01e950c4f446b05029f"
   integrity sha512-aveCYRQbgTH9Pssp1voEP7HiuWlD2jW2BO56w+bVrJn04i61yh6mRfoKO6hEYQD9vF+W8Chkwc6j1M36uPkx4g==
 
+"@types/string-similarity@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@types/string-similarity/-/string-similarity-4.0.0.tgz#8cc03d5d1baad2b74530fe6c7d849d5768d391ad"
+  integrity sha512-dMS4S07fbtY1AILG/RhuwmptmzK1Ql8scmAebOTJ/8iBtK/KI17NwGwKzu1uipjj8Kk+3mfPxum56kKZE93mzQ==
+
 "@types/ws@^8.5.3":
   version "8.5.3"
   resolved "https://registry.yarnpkg.com/@types/ws/-/ws-8.5.3.tgz#7d25a1ffbecd3c4f2d35068d0b283c037003274d"
@@ -270,6 +275,11 @@ path-is-absolute@^1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/path-is-absolute/-/path-is-absolute-1.0.1.tgz#174b9268735534ffbc7ace6bf53a5a9e1b5c5f5f"
   integrity sha1-F0uSaHNVNP+8es5r9TpanhtcX18=
+
+string-similarity@^4.0.4:
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/string-similarity/-/string-similarity-4.0.4.tgz#42d01ab0b34660ea8a018da8f56a3309bb8b2a5b"
+  integrity sha512-/q/8Q4Bl4ZKAPjj8WerIBJWALKkaPRfrvhfF8k/B23i4nzrlRj2/go1m90In7nG/3XDSbOo0+pu6RvCTM9RGMQ==
 
 tr46@~0.0.3:
   version "0.0.3"
