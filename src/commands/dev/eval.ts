@@ -8,10 +8,11 @@ import {
 	ModalSubmitInteraction,
 	TextInputStyle,
 } from "discord.js";
-import { Command } from "../../structures/Command";
+import { Command } from "../../structures/";
 import { inspect } from "node:util";
 import fetch from "node-fetch";
 import { Constants } from "../../typings/constants";
+import { Time } from "../../typings/enums";
 export class EvalCommand extends Command {
 	constructor() {
 		super({
@@ -26,6 +27,12 @@ export class EvalCommand extends Command {
 					},
 				],
 			},
+			preconditions: {
+				elevatedPermissions: true,
+			},
+			restraints: {
+				global: false
+			}
 		});
 	}
 
@@ -58,7 +65,7 @@ export class EvalCommand extends Command {
 			m.user.id === interaction.user.id && m.customId === "concord:eval/modal";
 
 		try {
-			const modalInteraction = await interaction.awaitModalSubmit({ time: 999 * 1000, filter });
+			const modalInteraction = await interaction.awaitModalSubmit({ time: Time.Second * 999, filter });
 
 			const codeString = modalInteraction.fields.getTextInputValue("concord:eval/codeInput");
 			await modalInteraction.deferReply();
@@ -106,7 +113,8 @@ export class EvalCommand extends Command {
 								value: `${executionEnd - executionStart}ms`,
 								inline: true,
 							}
-						).setColor(Constants.DEFAULT_COLOR);
+						)
+						.setColor(Constants.DEFAULT_COLOR);
 					modalInteraction.editReply({
 						embeds: [embed],
 					});

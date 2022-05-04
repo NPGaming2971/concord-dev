@@ -1,5 +1,5 @@
 import type { Snowflake } from "@sapphire/snowflake";
-import type { ChannelType } from "discord-api-types/v10";
+import { ChannelType, LocalizationMap, PermissionsBitField } from "discord.js";
 import {
 	ApplicationCommandData,
 	ApplicationCommandOptionData,
@@ -14,42 +14,46 @@ import {
 import { Collection } from "discord.js";
 import { Converters } from "../utils/converters";
 
-export class Command {
+export abstract class Command {
 	public readonly data: CommandConstructor["data"];
 	public cooldowns = new Collection<string, number>();
 	public path?: string;
-	private readonly restraints: CommandConstructor["restraints"];
+	private readonly restraints?: CommandConstructor["restraints"];
+	public readonly preconditions?: CommandConstructor["preconditions"];
 
 	constructor(data: CommandConstructor) {
 		this.data = data.data;
 		this.restraints = data.restraints;
+		this.preconditions = data.preconditions;
 	}
 
 	/**
 	 * Executes the application command's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public chatInputRun?(interaction: ChatInputCommandInteraction): Awaitable<unknown>;
+	public chatInputRun?(interaction: ChatInputCommandInteraction<"cached">): Awaitable<unknown>;
 
 	/**
 	 * Executes the message context menu's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
 	public messageContextMenuRun?(
-		interaction: MessageContextMenuCommandInteraction
+		interaction: MessageContextMenuCommandInteraction<"cached">
 	): Awaitable<unknown>;
 
 	/**
 	 * Executes the user context menu's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public userContextMenuRun?(interaction: UserContextMenuCommandInteraction): Awaitable<unknown>;
+	public userContextMenuRun?(
+		interaction: UserContextMenuCommandInteraction<"cached">
+	): Awaitable<unknown>;
 
 	/**
 	 * Executes the autocomplete command's logic.
 	 * @param interaction The interaction that triggered the command.
 	 */
-	public autocompleteRun?(interaction: AutocompleteInteraction): Awaitable<unknown>;
+	public autocompleteRun?(interaction: AutocompleteInteraction<"cached">): Awaitable<unknown>;
 
 	/**
 	 * Whether this command supports chat input interaction.
@@ -91,6 +95,7 @@ export class Command {
 	}
 	/**
 	 * Whether this command is set to be global.
+	 * @returns {boolean}
 	 */
 	public isGlobal() {
 		return this.restraints?.global ?? false;
@@ -99,13 +104,13 @@ export class Command {
 	public toJSON(): ApplicationCommandData[] {
 		const data: ApplicationCommandData[] = [];
 
-		const { description, name, options } = this.data;
+		const { options, ...contextMenuCommandData } = this.data
 
 		if (this.supportContextMenu()) {
 			data.push(
 				Converters.camelCaseKeysToUnderscore({
-					description,
-					name,
+					...contextMenuCommandData,
+					defaultMemberPermissions: new PermissionsBitField(...[this.preconditions?.requiredUserPermissions]).bitfield.toString(), 
 					type: this.supportMessageContextMenu()
 						? ApplicationCommandType.Message
 						: ApplicationCommandType.User,
@@ -116,14 +121,13 @@ export class Command {
 		if (this.supportChatInput()) {
 			data.push(
 				Converters.camelCaseKeysToUnderscore({
-					description,
-					name,
-					options,
+					...this.data,
+					defaultMemberPermissions: new PermissionsBitField(...[this.preconditions?.requiredUserPermissions]).bitfield.toString(), 
 					type: ApplicationCommandType.ChatInput,
 				})
 			);
 		}
-		return data
+		return data;
 	}
 }
 
@@ -149,6 +153,10 @@ export interface CommandConstructor {
 		name: string;
 		description: string;
 		options?: ApplicationCommandOptionData[];
+		defaultPermissions?: boolean;
+		nameLocalizations?: LocalizationMap;
+		descriptionLocalizations?: LocalizationMap;
+		defaultMemberPermissions?: string
 	};
 	help?: {
 		usage?: string;
@@ -159,14 +167,21 @@ export interface CommandConstructor {
 		elevatedPermissions?: boolean;
 		requiredClientPermissions?: PermissionResolvable[];
 		requiredUserPermissions?: PermissionResolvable[];
+		whitelist?: {
+			channels?: string[];
+			guilds?: string[];
+		};
 	};
+	
 	restraints?: {
 		global?: boolean;
 		enabled?: boolean;
-		cooldowns?: {
-			scope?: CooldownScope;
-			delay?: number;
-			ignore?: Snowflake[];
-		};
+		cooldowns?: CooldownSettings
 	};
+}
+
+export interface CooldownSettings {
+	scope?: CooldownScope;
+	delay?: number;
+	ignore?: Snowflake[];
 }

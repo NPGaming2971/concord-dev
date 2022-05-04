@@ -1,4 +1,4 @@
-import type { Awaitable } from "discord.js";
+import { Awaitable, WebhookClient } from "discord.js";
 import { Logger } from "../classes/Logger";
 
 export class Util {
@@ -17,5 +17,35 @@ export class Util {
             Logger.error('Error', error);
             return error as E;
         }
+    }
+
+    static stringTemplateParser(
+        expression: string,
+        valueObj: { [key: string]: string }
+    ) {
+        const templateMatcher = /{{\s?([^{}\s]*)\s?}}/g;
+        let text = expression.replace(templateMatcher, (_substring, value, _index) => {
+            value = valueObj[value];
+            return value;
+        });
+        return text;
+    }
+
+    static fallback<K, R>(nullishValue: K, fallbackValue: R): any {
+        return typeof nullishValue === 'undefined' ? fallbackValue : nullishValue;
+    }
+
+    static containsDuplicatedItem(array: any[]) {
+        return new Set(array).size !== array.length
+    }
+
+    static destructureWebhookURL(url: string) {
+        const client = new WebhookClient({url: url})
+
+        const {id, token} = client
+
+        client.destroy()
+
+        return {id, token}
     }
 }

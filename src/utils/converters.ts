@@ -32,4 +32,9 @@ export class Converters {
 		});
 		return text;
 	}
+
+	static splitPascalCase(word: string) {
+		var wordRe = /($[a-z])|[A-Z][^A-Z]+/g;
+		return word.match(wordRe)?.join(" ");
+	}
 }

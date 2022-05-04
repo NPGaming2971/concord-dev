@@ -1,7 +1,7 @@
 import { EmbedBuilder } from "@discordjs/builders";
 import type { ChatInputCommandInteraction } from "discord.js";
-import { Command } from "../structures/Command";
-import { Constants } from "../typings/constants";
+import { Command } from "../../structures/";
+import { Constants } from "../../typings/constants";
 
 export class PingCommand extends Command {
 	constructor() {

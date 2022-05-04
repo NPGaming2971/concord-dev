@@ -1,6 +1,6 @@
 import type { Client } from "discord.js";
 import { Logger } from "../../classes/Logger";
-import { Listener } from "../../structures/Listener";
+import { Listener } from "../../structures/";
 
 export class DebugEvent extends Listener<"debug"> {
 	constructor(client: Client) {

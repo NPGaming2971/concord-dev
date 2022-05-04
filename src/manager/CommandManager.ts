@@ -1,48 +1,46 @@
-import type { Command } from "../structures/Command";
-import type { CommandAndEventLoadOptions, CommandLoadOptions } from "../typings";
-import type { Listener } from "../structures/Listener";
+import type { CommandAndEventLoadOptions, CommandLoadOptions } from '../typings';
 
-import { REST } from "@discordjs/rest";
-import { ApplicationCommandData, Client, LimitedCollection } from "discord.js";
-import { Enumerable } from "../utils/decorators";
-import glob from "glob";
-import { promisify } from "util";
-import { join, basename } from "node:path";
-import { Util } from "../utils/utils";
-import { Routes } from "discord.js/node_modules/discord-api-types/v10";
-import { Constants } from "../typings/constants";
-import { ConcordError } from "../structures/ConcordError";
+import { REST } from '@discordjs/rest';
+import { ApplicationCommandData, BaseManager, Client, LimitedCollection } from 'discord.js';
+import { Enumerable } from '../utils/decorators';
+import glob from 'glob';
+import { promisify } from 'util';
+import { join, basename, normalize } from 'node:path';
+import { Util } from '../utils/utils';
+import { Routes } from 'discord-api-types/v10';
+import { Constants } from '../typings/constants';
+import { ConcordError, type Listener, type Command } from '../structures/';
+import { DatabaseUtil } from '../utils/DatabaseUtil';
 
 const globPromise = promisify(glob);
-
-export class CommandManager {
-
+let firstRun = true;
+export class CommandManager extends BaseManager {
 	@Enumerable(false)
 	public readonly cache = new LimitedCollection<string, Command>({
 		maxSize: 100,
 		keepOverLimit: () => {
-			throw new Error("Maximum number of slash commands reached (100).");
-		},
+			throw new Error('Maximum number of slash commands reached (100).');
+		}
 	});
 
-	public client: Client;
-
 	constructor(client: Client) {
-		this.client = client;
+		super(client);
+
+		DatabaseUtil.init(client);
 	}
 
-	private handlePathOption(path: string, option?: CommandLoadOptions["options"]) {
+	private handlePathOption(path: string, option?: CommandLoadOptions['options']) {
 		if (option?.subfolderDepth) {
-			const array = new Array(option.subfolderDepth).fill("**");
+			const array = new Array(option.subfolderDepth).fill('**');
 			path = join(path, ...array);
 		}
 
 		path = option?.extensions
 			? option.extensions.length > 1
-				? `${path}/*.{${option.extensions.join(",")}}`
+				? `${path}/*.{${option.extensions.join(',')}}`
 				: `${path}/*.${option.extensions[0]}`
-			: join(path, "*");
-		return path;
+			: join(path, '*');
+		return normalize(path);
 	}
 
 	public async load(option: CommandLoadOptions) {
@@ -69,32 +67,36 @@ export class CommandManager {
 	}
 
 	public deploy() {
-
 		//Preconditions: CommandManager.cache is populated
-		if (this.cache.size === 0) throw new Error("CommandManager.prototype.cache is empty.");
+		if (this.cache.size === 0) throw new Error('CommandManager.prototype.cache is empty.');
 
-		const rest = new REST({ version: "10" }).setToken(process.env.TOKEN!);
+		const rest = new REST({ version: '10' }).setToken(process.env.TOKEN!);
 		const clientId = Constants.CLIENT_ID;
-		const targetGuildId: string[] = ["755892553827483799"];
+		const targetGuildId = Constants.DEVELOPMENT_GUILD_ID;
 
 		//TODO
 		const data = {
 			global: [] as ApplicationCommandData[][],
-			local: [] as ApplicationCommandData[][],
+			local: [] as ApplicationCommandData[][]
 		};
 
 		this.cache.map((command) => {
-			data[command.isGlobal() ? "global" : "local"].push(command.toJSON());
+			const apiCommand = command.toJSON();
+			if (!apiCommand.length)
+				return this.client.logger.debug(this.constructor.name, `Ignored command ${command.data.name} for lacking run function(s).`);
+			data[command.isGlobal() ? 'global' : 'local'].push(apiCommand);
 		});
 
-		if (data.local.length)
+		if (data.local.length) {
+			const commandData = data.local.flat();
+
 			targetGuildId.map((id) =>
 				rest
-					.put(Routes.applicationGuildCommands(clientId, id), { body: data.local.flat() })
+					.put(Routes.applicationGuildCommands(clientId, id), { body: commandData })
 					.then(() =>
 						this.client.logger.info(
 							this.constructor.name,
-							`Successfully deployed ${data.local.length} local command(s) on guild <${id}>.`
+							`Successfully deployed ${commandData.length} local command(s) on guild <${id}>.`
 						)
 					)
 					.catch((err) => {
@@ -102,46 +104,39 @@ export class CommandManager {
 						process.exit(0);
 					})
 			);
-		if (data.global.length)
-			rest
-				.put(Routes.applicationCommands(clientId), { body: data.global.flat() })
-				.then(() =>
-					this.client.logger.info(
-						this.constructor.name,
-						`Successfully deployed ${data.global.length} global command(s).`
-					)
-				)
+		}
+		if (data.global.length) {
+			const commandData = data.global.flat();
+
+			rest.put(Routes.applicationCommands(clientId), { body: commandData })
+				.then(() => this.client.logger.info(this.constructor.name, `Successfully deployed ${commandData.length} global command(s).`))
 				.catch((err) => {
 					this.client.logger.error(this.constructor.name, err);
 					process.exit(0);
 				});
+		}
 	}
 
 	public async loadCommands(globPattern: string, options?: CommandAndEventLoadOptions) {
-
-		console.log(globPattern)
-
 		const files = await globPromise(globPattern);
 
-		console.log(files)
-
 		if (!files.length && options?.errorOnNoMatches) {
-			throw new Error("Specified pattern has no matches.");
+			throw new Error('Specified pattern has no matches.');
 		}
 
 		for (const file of files) {
 			delete require.cache[require.resolve(file)];
 
-			const commandFile = await import(file)
-			const command = commandFile.default || Object.values(commandFile)[0]; 
+			const commandFile = await import(file);
+			const command = Object.values({ ...commandFile })[0] as any;
 
-			if (typeof command === "undefined") {
+			if (typeof command === 'undefined') {
 				if (!options?.errorOnEmptyFile) {
 					continue;
 				} else
 					throw new ConcordError({
 						message: `The file ${basename(file)} has no exported structure.`,
-						name: "[EMPTY_COMMAND_FILE]",
+						name: '[EMPTY_COMMAND_FILE]'
 					});
 			}
 
@@ -151,19 +146,22 @@ export class CommandManager {
 
 			this.loadToCache(constructedCommand);
 		}
+
+		firstRun = false;
 	}
 
 	private async loadEvents(globPattern: string, options?: CommandAndEventLoadOptions) {
 		const files = await globPromise(globPattern);
 		if (!files.length && options?.errorOnNoMatches) {
-			throw new Error("Specified pattern has no matches.");
+			throw new Error('Specified pattern has no matches.');
 		}
 
 		for (const file of files) {
 			delete require.cache[require.resolve(file)];
-			
-			const eventFile = await import(file)
-			const event = eventFile.default || Object.values(eventFile)[0]; 
+
+			const eventFile = await import(file);
+
+			const event = Object.values({ ...eventFile })[0] as any;
 
 			const constructedEvent = Reflect.construct(event, [this.client]) as Listener<any>;
 
@@ -174,6 +172,7 @@ export class CommandManager {
 	}
 
 	private loadToCache(data: Command) {
+		if (this.cache.has(data.data.name) && firstRun) throw new Error(`Duplicated comamnd detected: Command '${data.data.name}' already exists.`);
 		this.cache.set(data.data.name, data);
 	}
 

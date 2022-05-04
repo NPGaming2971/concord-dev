@@ -16,5 +16,4 @@ client.commands.load({
 		deploy: true,
 	},
 });
-
 client.login(process.env.TOKEN);

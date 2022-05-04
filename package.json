@@ -4,20 +4,22 @@
   "description": "Concord supports conversing between multi-servers. Packed with feature and full customability.",
   "dependencies": {
     "@discordjs/rest": "^0.4.1",
-    "@railway/cli": "^1.5.0",
     "@sapphire/ts-config": "^3.3.4",
-    "@types/glob": "^7.2.0",
-    "@types/string-similarity": "^4.0.0",
+    "better-sqlite3": "^7.5.1",
     "discord.js": "^14.0.0-dev.1650413390-585169f",
     "dotenv": "^16.0.0",
+    "fuse.js": "^6.5.3",
     "glob": "^7.2.0",
-    "node-fetch": "2",
-    "string-similarity": "^4.0.4"
+    "node-fetch": "2"
   },
-  "devDependencies": {},
   "scripts": {
     "run": "ts-node src/index.ts"
   },
   "license": "MIT",
-  "packageManager": "yarn@1.22.15"
+  "packageManager": "yarn@1.22.15",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.5.0",
+    "@types/glob": "^7.2.0",
+    "@types/string-similarity": "^4.0.0"
+  }
 }
