@@ -21,7 +21,7 @@ export class RegisterCommand extends Command {
 						description: 'Force Concord to create a new webhook instead of reusing existing webhook [default: false].',
 						type: ApplicationCommandOptionType.Boolean
 					}
-				],
+				]
 			},
 			preconditions: {
 				canRunIn: [ChannelType.GuildText, ChannelType.GuildNews],
@@ -32,7 +32,8 @@ export class RegisterCommand extends Command {
 				cooldowns: {
 					delay: Time.Minute * 5,
 					scope: CooldownScope.Guild
-				}
+				},
+				global: true
 			}
 		});
 	}
@@ -63,7 +64,7 @@ export class RegisterCommand extends Command {
 
 			failed.map((e) => e.delete());
 
-			interaction.editReply(`Successfully registered this channel! Now it's ready to connect to any Concord groups.`);
+			interaction.editReply(`Successfully registered this channel. Now it's ready to connect to any Concord groups.`);
 		} else createWebhook();
 
 		return;
@@ -72,7 +73,7 @@ export class RegisterCommand extends Command {
 			channel
 				.createWebhook('Concord', { reason: `Requested by ${interaction.user.tag}` })
 				.then(async (webhook) => {
-					interaction.client.registry.create({ channel, url: webhook.url, groupId: null });
+					webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
 					interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
 				})
 				.catch((err) => interaction.editReply(new ConcordError({ name: err.name, message: err.message }).toString()));

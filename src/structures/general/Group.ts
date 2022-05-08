@@ -1,8 +1,8 @@
 import type { Database } from "better-sqlite3";
 import { Base, Client, LocaleString } from "discord.js";
-import { GroupRegistryManager } from "../manager/GroupRegistryManager";
-import type { APIGroup } from "../typings";
-import type { GroupStatusType } from "../typings/enums";
+import { GroupRegistryManager } from "../../manager/GroupRegistryManager";
+import type { APIGroup } from "../../typings";
+import type { GroupStatusType } from "../../typings/enums";
 
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {

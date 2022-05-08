@@ -16,11 +16,14 @@ export class CreateCommand extends Command {
 					},
 				],
 			},
+			restraints: {
+				global: true
+			}
 		});
 	}
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<"cached">) {
-		await interaction.deferReply();
+		await interaction.deferReply()
 
 		const tag = interaction.options.getString("tag", true);
 

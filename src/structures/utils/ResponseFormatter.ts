@@ -1,5 +1,5 @@
-import { Error } from "../typings/enums";
-import { Util } from "../utils/utils";
+import { Error } from "../../typings/enums";
+import { Util } from "../../utils/utils";
 
 export class ResponseFormatters {
 	public static prepareError(errorId: keyof typeof Error, template?: { [key: string]: string }) {

@@ -4,7 +4,7 @@ import { REST } from '@discordjs/rest';
 import { ApplicationCommandData, BaseManager, Client, LimitedCollection } from 'discord.js';
 import { Enumerable } from '../utils/decorators';
 import glob from 'glob';
-import { promisify } from 'util';
+import { promisify } from 'node:util';
 import { join, basename, normalize } from 'node:path';
 import { Util } from '../utils/utils';
 import { Routes } from 'discord-api-types/v10';
@@ -30,49 +30,54 @@ export class CommandManager extends BaseManager {
 	}
 
 	private handlePathOption(path: string, option?: CommandLoadOptions['options']) {
-		if (option?.subfolderDepth) {
-			const array = new Array(option.subfolderDepth).fill('**');
+
+		const { extensions, subfolderDepth } = option ?? {}
+
+		if (subfolderDepth) {
+			const array = new Array(subfolderDepth).fill('**');
 			path = join(path, ...array);
 		}
 
-		path = option?.extensions
-			? option.extensions.length > 1
-				? `${path}/*.{${option.extensions.join(',')}}`
-				: `${path}/*.${option.extensions[0]}`
+		path = extensions
+			? extensions.length > 1
+				? `${path}/*.{${extensions.join(',')}}`
+				: `${path}/*.${extensions[0]}`
 			: join(path, '*');
 		return normalize(path);
 	}
 
 	public async load(option: CommandLoadOptions) {
-		const { path } = option;
+		const { path, options = {} } = option;
+		const { deploy, errorOnEmptyFile, errorOnNoMatches } = options
+		let { events, commands } = path
 
-		if (path.commands) {
-			path.commands = this.handlePathOption(path.commands, option.options);
+		if (commands) {
+			commands = this.handlePathOption(commands, option.options);
 
-			await this.loadCommands(path.commands, {
-				errorOnNoMatches: option.options?.errorOnNoMatches,
-				errorOnEmptyFile: option.options?.errorOnEmptyFile
+			await this.loadCommands(commands, {
+				errorOnNoMatches: errorOnNoMatches,
+				errorOnEmptyFile: errorOnEmptyFile
 			});
-			if (option.options?.deploy) this.deploy();
+			if (deploy) this.deploy();
 		}
 
-		if (path.events) {
-			path.events = this.handlePathOption(path.events, option.options);
+		if (events) {
+			events = this.handlePathOption(events, option.options);
 
-			await this.loadEvents(path.events, {
-				errorOnNoMatches: option.options?.errorOnNoMatches,
-				errorOnEmptyFile: option.options?.errorOnEmptyFile
+			await this.loadEvents(events, {
+				errorOnNoMatches: errorOnNoMatches,
+				errorOnEmptyFile: errorOnEmptyFile
 			});
 		}
 	}
 
 	public deploy() {
 		//Preconditions: CommandManager.cache is populated
-		if (this.cache.size === 0) throw new Error('CommandManager.prototype.cache is empty.');
+		if (!this.cache.size) throw new Error('CommandManager.prototype.cache is empty.');
 
 		const rest = new REST({ version: '10' }).setToken(process.env.TOKEN!);
-		const clientId = Constants.CLIENT_ID;
-		const targetGuildId = Constants.DEVELOPMENT_GUILD_ID;
+		const clientId = Constants.ClientId;
+		const targetGuildId = Constants.DevelopmentGuildId;
 
 		//TODO
 		const data = {
@@ -83,7 +88,7 @@ export class CommandManager extends BaseManager {
 		this.cache.map((command) => {
 			const apiCommand = command.toJSON();
 			if (!apiCommand.length)
-				return this.client.logger.debug(this.constructor.name, `Ignored command ${command.data.name} for lacking run function(s).`);
+				return this.client.logger.debug(this.constructor.name, `Ignored command '${command.data.name}' for lacking run function(s).`);
 			data[command.isGlobal() ? 'global' : 'local'].push(apiCommand);
 		});
 

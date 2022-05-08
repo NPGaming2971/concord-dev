@@ -24,15 +24,13 @@ export class LeaveCommand extends Command {
 	}
 	public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<any> {
 		const channel = (interaction.options.getChannel('channel') as RegisterableChannel) ?? interaction.channel;
-		const targetGroup = interaction.client.registry.fetch(interaction.channelId)?.groupId;
+		const targetGroup = interaction.client.registry.fetch(interaction.channelId)?.group;
 
 		await interaction.deferReply();
 
 		if (!targetGroup) return interaction.editReply('You aint in any group.');
 
-		const group = interaction.client.groups.cache.find((i) => i.id === targetGroup);
-
-		group?.channels.kick(channel);
-		interaction.editReply(`Left ${group?.tag}`);
+		targetGroup?.channels.kick(channel);
+		interaction.editReply(`Left ${targetGroup?.tag}`);
 	}
 }

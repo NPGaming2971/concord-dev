@@ -1,6 +1,6 @@
 import { BaseFetchOptions, CachedManager, ChannelResolvable, Client } from "discord.js";
 import { ChannelRegistry } from "../structures/";
-import type { RegisterableChannel, RegistryCreateOptions } from "../typings";
+import type { APIChannelRegistry, RegisterableChannel, RegistryCreateOptions } from "../typings";
 
 export class ChannelRegistryManager extends CachedManager<
 	string,
@@ -9,7 +9,7 @@ export class ChannelRegistryManager extends CachedManager<
 > {
 
 
-	constructor(client: Client) {
+	constructor(client: Client) { 
 		super(client, ChannelRegistry);
 	}
 
@@ -23,14 +23,15 @@ export class ChannelRegistryManager extends CachedManager<
 
 		const { getRegistry } = this.client.statements;
 
-		const data = getRegistry.get(id);
+		const data: APIChannelRegistry | undefined = getRegistry.get(id);
 	
 		if (!data) return null
 
-		return this._add(data, cache);
+		const group = data.groupId ? this.client.groups.cache.get(data.groupId) : null;
+		return this._add(data, cache, { id: id, extras: [group] });
 	}
 
-	delete(channel: ChannelResolvable) {
+	delete(channel: ChannelResolvable) { 
 		const id = this.client.channels.resolveId(channel);
 		const { deleteRegistry } = this.client.statements;
 

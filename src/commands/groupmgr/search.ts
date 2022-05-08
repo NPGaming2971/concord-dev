@@ -55,7 +55,7 @@ export class CreateCommand extends Command {
 						type: ApplicationCommandOptionType.String
 					}
 				]
-			}
+			},
 		});
 	}
 
@@ -110,7 +110,7 @@ export class CreateCommand extends Command {
 		}
 		const pagination = new Pagination<EmbedBuilder>({
 			pages: initial.map((i) =>
-				new GroupEmbedModal(i).showMultiple(['Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag'])
+				new GroupEmbedModal(i).showMultiple('Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag')
 			),
 			splitInto: 3
 		});

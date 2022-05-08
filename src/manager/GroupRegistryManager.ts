@@ -16,10 +16,10 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 	public add(channel: ChannelResolvable) {
 		const id = this.client.channels.resolveId(channel);
 
-		let registry = this.client.registry.fetch(id);
+		const registry = this.client.registry.fetch(id);
 		if (!registry) throw new Error("Channel is not present in database.");
 
-		registry = registry.edit({ groupId: this.group.id });
+		registry.edit({ groupId: this.group.id });
 
 		this.cache.set(registry.channelId, registry);
 		return registry
@@ -28,10 +28,10 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 	public kick(channel: ChannelResolvable) {
 		const id = this.client.channels.resolveId(channel);
 
-		let registry = this.client.registry.fetch(id);
+		const registry = this.client.registry.fetch(id);
 		if (!registry) throw new Error("Channel is not present in database.");
 
-		registry = registry.edit({ groupId: null });
+		registry.edit({ groupId: null });
 
 		this.cache.delete(registry.channelId);
 		return registry

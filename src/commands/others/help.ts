@@ -21,6 +21,9 @@ export class HelpCommand extends Command {
 					},
 				],
 			},
+			restraints: {
+				global: true
+			}
 		});
 	}
 

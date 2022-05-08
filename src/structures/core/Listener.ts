@@ -1,6 +1,6 @@
 import type { Client, ClientEvents } from "discord.js";
 import type { EventEmitter } from "node:events";
-import { Util } from "../utils/utils";
+import { Util } from "../../utils/utils";
 
 export abstract class Listener<E extends keyof ClientEvents> {
 

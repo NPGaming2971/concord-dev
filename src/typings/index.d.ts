@@ -1,11 +1,13 @@
 import type { ChannelResolvable, NewsChannel, TextChannel, UserResolvable } from "discord.js";
 import type { ChannelRegistry, Group } from "../structures/";
-import type { GroupStatusType } from "./enums";
+import type { GroupPermissionsFlagBits, GroupStatusType } from "./enums";
 
 export type CommandAndEventLoadOptions = {
 	errorOnNoMatches?: boolean;
 	errorOnEmptyFile?: boolean;
 };
+
+export type GroupPermissionsString = keyof typeof GroupPermissionsFlagBits
 
 export type CommandLoadOptions = {
 	/**

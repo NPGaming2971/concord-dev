@@ -1,9 +1,9 @@
 import { Base, Client, WebhookClient, WebhookMessageOptions } from "discord.js";
 import type { APIMessage } from "discord.js/node_modules/discord-api-types/v10";
-import type { APIChannelRegistry, RegisterableChannel } from "../typings";
+import type { APIChannelRegistry, RegisterableChannel } from "../../typings";
 
-import { Util } from "../utils/utils";
-import { ConcordError } from "./ConcordError";
+import { Util } from "../../utils/utils";
+import { ConcordError } from "../errors/ConcordError";
 import type { Group } from "./Group";
 
 export interface ChannelRegistry<Registered extends boolean = boolean> {
@@ -76,8 +76,6 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		const { fallback } = Util;
 		const { url, groupId } = options;
 
-		console.log(options)
-
 		const partialData = {
 			channel: this.channel,
 			url: fallback(url, this.webhook),
@@ -85,6 +83,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		};
 
 		return this.client.registry.create(partialData);
+
 	}
 
 	public delete() {

@@ -114,7 +114,7 @@ export class EvalCommand extends Command {
 								inline: true,
 							}
 						)
-						.setColor(Constants.DEFAULT_COLOR);
+						.setColor(Constants.DefaultColor);
 					modalInteraction.editReply({
 						embeds: [embed],
 					});

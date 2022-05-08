@@ -12,7 +12,7 @@ import {
 	UserContextMenuCommandInteraction,
 } from "discord.js";
 import { Collection } from "discord.js";
-import { Converters } from "../utils/converters";
+import { Converters } from "../../utils/converters";
 
 export abstract class Command {
 	public readonly data: CommandConstructor["data"];
@@ -110,6 +110,7 @@ export abstract class Command {
 			data.push(
 				Converters.camelCaseKeysToUnderscore({
 					...contextMenuCommandData,
+					dmPermission: this.restraints?.dmPermission ?? false,
 					defaultMemberPermissions: new PermissionsBitField(...[this.preconditions?.requiredUserPermissions]).bitfield.toString(), 
 					type: this.supportMessageContextMenu()
 						? ApplicationCommandType.Message
@@ -122,6 +123,7 @@ export abstract class Command {
 			data.push(
 				Converters.camelCaseKeysToUnderscore({
 					...this.data,
+					dmPermission: this.restraints?.dmPermission ?? false,
 					defaultMemberPermissions: new PermissionsBitField(...[this.preconditions?.requiredUserPermissions]).bitfield.toString(), 
 					type: ApplicationCommandType.ChatInput,
 				})
@@ -156,7 +158,6 @@ export interface CommandConstructor {
 		defaultPermissions?: boolean;
 		nameLocalizations?: LocalizationMap;
 		descriptionLocalizations?: LocalizationMap;
-		defaultMemberPermissions?: string
 	};
 	help?: {
 		usage?: string;
@@ -174,6 +175,7 @@ export interface CommandConstructor {
 	};
 	
 	restraints?: {
+		dmPermission?: boolean
 		global?: boolean;
 		enabled?: boolean;
 		cooldowns?: CooldownSettings
