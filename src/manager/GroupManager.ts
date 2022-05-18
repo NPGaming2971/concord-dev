@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { CachedManager, Client, SnowflakeUtil } from 'discord.js';
-import { Group, ChannelRegistry, ConcordError } from '../structures/';
+import { Group, ChannelRegistry } from '../structures/';
+import { ConcordError } from '../structures/';
 import type { GroupCreateOptions, GroupResolvable } from '../typings';
 import { GroupStatusType } from '../typings/enums';
 import { DatabaseUtil } from '../utils/DatabaseUtil';
@@ -21,10 +22,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 		const ownerId = this.client.users.resolveId(owner);
 
 		if (!ownerId)
-			throw new ConcordError({
-				name: '[INVALID_OWNER]',
-				message: 'The owner must be a valid user.'
-			});
+			throw new ConcordError('INVALID_OWNER');
 
 		const data = {
 			tag,

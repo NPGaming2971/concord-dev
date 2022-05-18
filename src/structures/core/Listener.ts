@@ -1,6 +1,6 @@
 import type { Client, ClientEvents } from "discord.js";
 import type { EventEmitter } from "node:events";
-import { Util } from "../../utils/utils";
+import { fromAsync } from "@sapphire/result";
 
 export abstract class Listener<E extends keyof ClientEvents> {
 
@@ -26,8 +26,8 @@ export abstract class Listener<E extends keyof ClientEvents> {
 	public abstract run(...args: ClientEvents[E]): unknown;
 	
 	private async _run(...args: unknown[]) {
-        //@ts-expect-error
-		const result = await Util.fromAsync(() => this.run(...args));
+		//@ts-expect-error
+		const result = await fromAsync(() => this.run(...args));
 	}
 
 	/**

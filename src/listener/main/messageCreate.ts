@@ -1,8 +1,5 @@
-import { EmbedBuilder } from '@discordjs/builders';
-import { Attachment, Client, Message, MessageType, Sticker, WebhookClient } from 'discord.js';
+import { Client, Message, MessageType } from 'discord.js';
 import { Listener } from '../../structures';
-import { Util } from '../../utils/utils';
-
 export class MessageCreateEvent extends Listener<'messageCreate'> {
 	constructor(client: Client) {
 		super(client, { name: 'messageCreate', emitter: client });
@@ -13,7 +10,7 @@ export class MessageCreateEvent extends Listener<'messageCreate'> {
 			!message.inGuild() ||
 			// Ignore message from threads.
 			message.channel.isThread() ||
-			// Ignore messages from voices
+			// Ignore messages from voices.
 			message.channel.isVoice() ||
 			// Refuse to work with webhooks messages. Avoid duplications.
 			message.webhookId ||
@@ -23,51 +20,42 @@ export class MessageCreateEvent extends Listener<'messageCreate'> {
 			message.author.id === message.client.user?.id
 		)
 			return;
-
 		const registry = message.client.registry.fetch(message.channelId);
 
 		if (!registry || !registry.groupId || !registry.webhook) return;
+		
+		//TODO: handle message exceeding api limit (attachments, content)
+		/*
+		if (message.content.length > 100) {
+			const buttonsRow = new ActionRowBuilder<ButtonBuilder>().setComponents(
+				new ButtonBuilder().setLabel('Send as a file').setStyle(ButtonStyle.Primary).setCustomId('concord:message/sendAsFile'),
+				new ButtonBuilder()
+					.setLabel('Cut down content to 2000 characters')
+					.setStyle(ButtonStyle.Danger)
+					.setCustomId('concord:message/cutDown'),
+				new ButtonBuilder().setLabel('Do nothing (15s)').setStyle(ButtonStyle.Danger).setCustomId('concord:message/cancel')
+			);
 
-		// Message components
-		const embeds = message.embeds.map((embed) => new EmbedBuilder(embed.data));
-		let [passed, video] = message.attachments.partition((att) => !att.contentType?.startsWith('video/'));
-
-		const images = passed.map((att) => {
-			return renderAttachment(att);
-		});
-
-		const stickers = message.stickers.map((sticker) => renderSticker(sticker));
-
-		const attachments = video.toJSON();
-
-		//Preparing responses
-		const attachmentsToSend = embeds.concat(images, stickers);
+			const msg = await message.reply({
+				content: 'Your message exceeded the 2000 characters limit.\nPlease choose a method to proceed.',
+				components: [buttonsRow]
+			});
+			try {
+				const collected = await msg.awaitMessageComponent({
+					filter: Constants.BaseFilter(msg),
+					componentType: ComponentType.Button,
+					idle: 15000
+				});
+				if (collected.customId === 'concord:message/cancel') {
+					
+				}
+			} catch (e) {
+				
+			}
+		}
+		*/
 
 		//Responding
-		new WebhookClient({ url: registry.webhook }).send({
-			username: message.author.username,
-			avatarURL: message.author.displayAvatarURL({size: 4096}),
-			content: message.content,
-			files: attachments,
-			embeds: attachmentsToSend
-		});
+		registry.group?.send(message);
 	}
-}
-
-function renderAttachment(att: Attachment) {
-	const icon = 'https://cdn.discordapp.com/emojis/955764107997491261.webp?size=40&quality=lossless';
-	const embed = new EmbedBuilder();
-	if (att.contentType?.startsWith('image')) {
-		return embed.setImage(att.url).setFooter({ text: `Image: ${att.name}` });
-	} else {
-		return embed
-			.setTitle(att.name ?? 'Untitled')
-			.setURL(att.url)
-			.setDescription(Util.sizeOf(att.size))
-			.setThumbnail(icon);
-	}
-}
-
-function renderSticker(sticker: Sticker) {
-	return new EmbedBuilder().setImage(sticker.url).setFooter({ text: `Sticker: ${sticker.name}` });
 }

@@ -1,15 +1,18 @@
-import type { Database } from "better-sqlite3";
-import { Base, Client, LocaleString } from "discord.js";
-import { GroupRegistryManager } from "../../manager/GroupRegistryManager";
-import type { APIGroup } from "../../typings";
-import type { GroupStatusType } from "../../typings/enums";
+import type { Database } from 'better-sqlite3';
+import { Base, Client, LocaleString, Message } from 'discord.js';
+import { GroupMessageManager } from '../../manager/GroupMessageManager';
+import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
+import type { APIGroup } from '../../typings';
+import type { GroupStatusType } from '../../typings/enums';
 
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
 		super(client);
 
 		this.channels = new GroupRegistryManager(this);
+		this.messages = new GroupMessageManager(this);
 		this.database = database;
+		this.raw = data
 		this._patch(data);
 	}
 
@@ -18,7 +21,7 @@ export class Group extends Base implements Group {
 	}
 
 	public getDescription() {
-		return this.description ?? "No description provided.";
+		return this.description ?? 'No description provided.';
 	}
 
 	public getBannerURL() {
@@ -26,23 +29,22 @@ export class Group extends Base implements Group {
 	}
 
 	public getName() {
-		return this.name ?? "Unnamed";
+		return this.name ?? 'Unnamed';
 	}
 
 	public getLocale() {
-		if (this.locale) {
-			try {
-				return new Intl.DisplayNames("en", { type: "region", fallback: "none" }).of(
-					this.locale.toUpperCase()
-				);
-			} catch {
-				return "global";
-			}
-		} else return "global";
+		try {
+			return new Intl.DisplayNames('en', { type: 'region', fallback: 'none' }).of(this.locale!.toUpperCase());
+		} catch {
+			return 'global';
+		}
 	}
 
 	public async fetchOwner() {
 		return this.client.users.fetch(this.ownerId);
+	}
+	public async send(message: Message) {
+		return this.messages.create(message);
 	}
 
 	private _patch(data: APIGroup) {
@@ -60,33 +62,32 @@ export class Group extends Base implements Group {
 
 		this.locale = data.locale as LocaleString | null;
 
-		/**
-		 * This group status type.
-		 */
 		this.status = data.status;
 
-		/**
-		 * This group members cache
-		 */
 		this.channels.cache.clear();
 		const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
 		for (const registry of registries) {
 			this.channels._add(registry, true, { id: registry.id, extras: [this] });
 		}
 
-		if ("appearances" in data) {
+		if ('appearances' in data) {
 			this.avatar = data.appearances.avatar;
 
-			if ("banner" in data.appearances) this.banner = data.appearances.banner ?? null;
+			if ('banner' in data.appearances) this.banner = data.appearances.banner ?? null;
 
 			this.name = data.appearances.name;
 
-			if ("description" in data.appearances) this.description = data.appearances.description;
+			if ('description' in data.appearances) this.description = data.appearances.description;
 		}
+	}
+
+	public override toJSON(): APIGroup {
+		return this.raw
 	}
 }
 
 export interface Group {
+	/**The id of this group. */
 	id: string;
 	tag: string;
 	avatar: string | null;
@@ -96,9 +97,11 @@ export interface Group {
 	createdTimestamp: number;
 	createdAt: Date;
 	channelLimit: number;
+	raw: APIGroup
 	ownerId: string;
 	locale: LocaleString | null;
 	channels: GroupRegistryManager;
+	messages: GroupMessageManager;
 	status: GroupStatusType;
 	database: Database;
 }

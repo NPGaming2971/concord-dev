@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
-import { ConcordError, ResponseFormatters, Command, CooldownScope } from '../../structures/';
+import { ResponseFormatters, Command, CooldownScope } from '../../structures/';
 import type { RegisterableChannel } from '../../typings';
 import { Time } from '../../typings/enums';
 
@@ -33,7 +33,6 @@ export class RegisterCommand extends Command {
 					delay: Time.Minute * 5,
 					scope: CooldownScope.Guild
 				},
-				global: true
 			}
 		});
 	}
@@ -76,7 +75,7 @@ export class RegisterCommand extends Command {
 					webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
 					interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
 				})
-				.catch((err) => interaction.editReply(new ConcordError({ name: err.name, message: err.message }).toString()));
+				.catch((_) => interaction.editReply('An error occured.'));
 		}
 	}
 }

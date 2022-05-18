@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Command } from "../../structures/";
 import Fuse from "fuse.js";
+import { Constants } from "../../typings/constants";
 export class HelpCommand extends Command {
 	constructor() {
 		super({
@@ -20,9 +21,6 @@ export class HelpCommand extends Command {
 						autocomplete: true,
 					},
 				],
-			},
-			restraints: {
-				global: true
 			}
 		});
 	}
@@ -37,8 +35,13 @@ export class HelpCommand extends Command {
 				(i) => i.data.name === targetCommand
 			);
 
-			if (!command || command.preconditions?.elevatedPermissions)
+			if (!command)
 				return interaction.editReply("Failed to find any command with such name.");
+
+			if (
+				command.preconditions?.elevatedPermissions &&
+				!Constants.Administrators.includes(interaction.user.id)) 
+				return interaction.editReply('You are not authorized to view this resources.')
 
 			interaction.editReply({ embeds: [renderCommandEmbed(command)] });
 		}

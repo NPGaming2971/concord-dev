@@ -40,17 +40,19 @@ export class EvalCommand extends Command {
 		const asyncMode = interaction.options.getBoolean("async-mode") ?? true;
 		const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
+		const id = interaction.id
+
 		const textField = new TextInputBuilder()
 			.setPlaceholder("Your code here.")
 			.setRequired(true)
-			.setLabel("Code field" + (asyncMode ? " (Async Mode)" : ""))
+			.setLabel(`Code field ${asyncMode ? "(Async Mode)" : ""}`)
 			.setCustomId("concord:eval/codeInput")
 			.setStyle(TextInputStyle.Paragraph);
 
 		const codeModal = new ModalBuilder()
 			.setComponents(new ActionRowBuilder<TextInputBuilder>().setComponents(textField))
 			.setTitle("Concord: Eval")
-			.setCustomId("concord:eval/modal");
+			.setCustomId(`concord:eval/${id}`);
 
 		interaction.showModal(codeModal);
 		function clean(text: string) {
@@ -62,7 +64,7 @@ export class EvalCommand extends Command {
 		}
 
 		const filter = (m: ModalSubmitInteraction) =>
-			m.user.id === interaction.user.id && m.customId === "concord:eval/modal";
+			m.user.id === interaction.user.id && m.customId === `concord:eval/${id}`;
 
 		try {
 			const modalInteraction = await interaction.awaitModalSubmit({ time: Time.Second * 999, filter });

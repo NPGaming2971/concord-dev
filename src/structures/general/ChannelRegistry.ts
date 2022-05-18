@@ -1,10 +1,10 @@
-import { Base, Client, WebhookClient, WebhookMessageOptions } from "discord.js";
-import type { APIMessage } from "discord.js/node_modules/discord-api-types/v10";
-import type { APIChannelRegistry, RegisterableChannel } from "../../typings";
+import { Awaitable, Base, Client, MessageResolvable, WebhookClient, WebhookMessageOptions } from 'discord.js';
+import type { APIMessage } from 'discord.js/node_modules/discord-api-types/v10';
+import type { APIChannelRegistry, RegisterableChannel } from '../../typings';
 
-import { Util } from "../../utils/utils";
-import { ConcordError } from "../errors/ConcordError";
-import type { Group } from "./Group";
+import { Util } from '../../utils/utils';
+import { ConcordError } from '../errors/ConcordError';
+import type { Group } from './Group';
 
 export interface ChannelRegistry<Registered extends boolean = boolean> {
 	channelId: string;
@@ -16,13 +16,12 @@ export interface ChannelRegistry<Registered extends boolean = boolean> {
 export class ChannelRegistry extends Base implements ChannelRegistry {
 	constructor(client: Client, data: APIChannelRegistry, group: Group | null = null) {
 		super(client);
-		this.group = group; 
+		this.group = group;
 
 		this._patch(data);
 	}
 
 	public _patch(data: APIChannelRegistry) {
-
 		if ('id' in data) {
 			this.channelId = data.id;
 		}
@@ -42,26 +41,39 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		return this.client.channels.cache.get(this.channelId) as RegisterableChannel;
 	}
 
+	private createOneTimeClient(func: (client: WebhookClient) => Awaitable<any>) {
+		const client = new WebhookClient({url: this.webhook!})
+
+		const action = func(client)
+
+		client.destroy()
+		return action
+	}
+
+	private validateActionConditions() {
+		if (!this.isRegistered()) throw new ConcordError('CHANNEL_UNREGISTERED');
+	}
+
 	public async send(options: WebhookMessageOptions | string): Promise<APIMessage> {
-		if (!this.isRegistered())
-			throw new ConcordError({
-				message: "Channel is not registered",
-				name: `[CHANNEL_UNREGISTERED]`,
-			});
-		const client = new WebhookClient({ url: this.webhook! });
+		this.validateActionConditions();
 
-		const action = client.send(options);
-		client.destroy();
+		return this.createOneTimeClient((client) => client.send(options))
+	}
 
-		return action;
+	public async editMessage(target: MessageResolvable, options: WebhookMessageOptions | string): Promise<APIMessage> {
+		this.validateActionConditions();
+
+		return this.createOneTimeClient((client) => client.editMessage(target, options));
+	}
+
+	public async deleteMessage(target: MessageResolvable): Promise<void> {
+		this.validateActionConditions();
+
+		return this.createOneTimeClient((client) => client.deleteMessage(target));
 	}
 
 	public fetchWebhook() {
-		if (!this.isRegistered())
-			throw new ConcordError({
-				message: "Channel is not registered",
-				name: `[CHANNEL_UNREGISTERED]`,
-			});
+		if (!this.isRegistered()) throw new ConcordError('CHANNEL_UNREGISTERED');
 
 		const { token, id } = Util.destructureWebhookURL(this.webhook!);
 
@@ -79,11 +91,10 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		const partialData = {
 			channel: this.channel,
 			url: fallback(url, this.webhook),
-			groupId: fallback(groupId, this.groupId),
+			groupId: fallback(groupId, this.groupId)
 		};
 
 		return this.client.registry.create(partialData);
-
 	}
 
 	public delete() {

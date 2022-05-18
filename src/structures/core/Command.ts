@@ -104,7 +104,7 @@ export abstract class Command {
 	public toJSON(): ApplicationCommandData[] {
 		const data: ApplicationCommandData[] = [];
 
-		const { options, ...contextMenuCommandData } = this.data
+		const { options, description, ...contextMenuCommandData } = this.data
 
 		if (this.supportContextMenu()) {
 			data.push(

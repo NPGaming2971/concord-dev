@@ -7,9 +7,6 @@ export class PingCommand extends Command {
 	constructor() {
 		super({
 			data: { name: 'ping', description: 'Receive the bot ping' },
-			restraints: {
-				global: true,
-			}
 		});
 	}
 	public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<void> {

@@ -1,4 +1,5 @@
 import type { ChannelResolvable, NewsChannel, TextChannel, UserResolvable } from "discord.js";
+import type { APIMessage } from "discord.js/node_modules/discord-api-types/v10";
 import type { ChannelRegistry, Group } from "../structures/";
 import type { GroupPermissionsFlagBits, GroupStatusType } from "./enums";
 
@@ -10,14 +11,14 @@ export type CommandAndEventLoadOptions = {
 export type GroupPermissionsString = keyof typeof GroupPermissionsFlagBits
 
 export type CommandLoadOptions = {
-	/**
-	 * The command folder path to load.
-	 */
 	path: Partial<{
 		commands: string;
 		events: string;
 	}>;
 	options?: {
+		/**
+		 * Accepted file extensions. Default to ['ts'].
+		 */
 		extensions?: string[];
 		subfolderDepth?: number;
 		deploy?: boolean;
@@ -27,6 +28,14 @@ export type CommandLoadOptions = {
 };
 
 export type NonNullObject = {} & object;
+
+export interface APIGroupMessage {
+	url: string;
+	message: APIMessage;
+	group: Group;
+	parentId: [string, string]
+	registry: ChannelRegistry
+}
 
 export interface GroupCreateOptions {
 	name?: string | null;

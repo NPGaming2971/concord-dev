@@ -20,9 +20,9 @@ export class DatabaseStatement {
         //@ts-expect-error
         const preparedStatements: PreparedStatement = {}
     
-        for (const [key, value] of Object.entries(this.Statements)) {
+        for (const [name, statement] of Object.entries(this.Statements)) {
             Object.assign(preparedStatements, {
-                [`${key}`]: database.prepare(value),
+                [`${name}`]: database.prepare(statement),
             });
         }
         return preparedStatements;

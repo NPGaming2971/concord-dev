@@ -15,9 +15,6 @@ export class CreateCommand extends Command {
 						required: true,
 					},
 				],
-			},
-			restraints: {
-				global: true
 			}
 		});
 	}
@@ -26,7 +23,7 @@ export class CreateCommand extends Command {
 		await interaction.deferReply()
 
 		const tag = interaction.options.getString("tag", true);
-
+		
 		if (interaction.client.groups.cache.has(tag))
 			return interaction.editReply("already existed");
 

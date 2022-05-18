@@ -9,8 +9,9 @@ import { join, basename, normalize } from 'node:path';
 import { Util } from '../utils/utils';
 import { Routes } from 'discord-api-types/v10';
 import { Constants } from '../typings/constants';
-import { ConcordError, type Listener, type Command } from '../structures/';
+import type { Listener, Command } from '../structures/';
 import { DatabaseUtil } from '../utils/DatabaseUtil';
+import { ConcordError } from '../structures/';
 
 const globPromise = promisify(glob);
 let firstRun = true;
@@ -31,7 +32,7 @@ export class CommandManager extends BaseManager {
 
 	private handlePathOption(path: string, option?: CommandLoadOptions['options']) {
 
-		const { extensions, subfolderDepth } = option ?? {}
+		const { extensions = ['ts'], subfolderDepth } = option ?? {}
 
 		if (subfolderDepth) {
 			const array = new Array(subfolderDepth).fill('**');
@@ -45,7 +46,10 @@ export class CommandManager extends BaseManager {
 			: join(path, '*');
 		return normalize(path);
 	}
-
+	/**
+	 * Load commands into the cache and create events listener.
+	 * @param option {CommandLoadOptions}
+	 */
 	public async load(option: CommandLoadOptions) {
 		const { path, options = {} } = option;
 		const { deploy, errorOnEmptyFile, errorOnNoMatches } = options
@@ -139,12 +143,8 @@ export class CommandManager extends BaseManager {
 				if (!options?.errorOnEmptyFile) {
 					continue;
 				} else
-					throw new ConcordError({
-						message: `The file ${basename(file)} has no exported structure.`,
-						name: '[EMPTY_COMMAND_FILE]'
-					});
+					throw new ConcordError('EMPTY_COMMAND_FILE', basename(file));
 			}
-
 			const constructedCommand = Reflect.construct(command, []) as Command;
 
 			constructedCommand.path = file;

@@ -1,35 +1,45 @@
+'use strict';
+
 import { Formatters } from "discord.js";
 
-type ConcordErrorConstructor = {
-	message: string;
-    name: string
-	type?: ConcordErrorType;
-};
+// Heavily inspired by node's `internal/errors` module
 
-export enum ConcordErrorType {
-	INFORMATIONAL = 0,
-	SUCCESS = 1,
-	WARNING = 2,
-	ERROR = 3,
-	FATAL = 4,
-}
+const kCode = Symbol('code');
+const messages = new Map();
 
 export class ConcordError extends Error {
-	public type: ConcordErrorType;
+	constructor(key: string, ...args: any[]) {
+		super(message(key, args));
+		//@ts-expect-error
+		this[kCode] = key;
+		if (Error.captureStackTrace) Error.captureStackTrace(this, ConcordError);
+	}
 
-	constructor(options: ConcordErrorConstructor) {
-		super(options.message);
-		this.name = options.name;
-		this.type = options.type ?? ConcordErrorType.ERROR;
+	override get name() {
+		//@ts-expect-error
+		return `${super.name} [${this[kCode]}]`;
 	}
+
+	get code() {
+		//@ts-expect-error
+		return this[kCode];
+	}
+
 	override toString() {
-		const emojisMap: { [key: number]: string } = {
-			0: "ℹ",
-			1: "✔",
-			2: `⚠`,
-			3: `❌`,
-			4: `🟥`
-		};
-		return `\`${emojisMap[this.type]}\` ${Formatters.bold(this.name)}\n${this.message}`;
+		`\`⚠\` ${Formatters.bold(this.name)}\n${this.message}`;
 	}
+}
+
+function message(key: string, args: unknown[]) {
+	if (typeof key !== 'string') throw new Error('Error message key must be a string');
+	const msg = messages.get(key);
+	if (!msg) throw new Error(`An invalid error message key was used: ${key}.`);
+	if (typeof msg === 'function') return msg(...args);
+	if (!args?.length) return msg;
+	args.unshift(msg);
+	return String(...args);
+}
+
+export function register(sym: string, val: any) {
+	messages.set(sym, typeof val === 'function' ? val : String(val));
 }

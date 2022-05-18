@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const client = new ConcordClient();
-
 client.commands.load({
 	path: {
 		commands: `${process.cwd()}/src/commands/`,
@@ -11,9 +10,9 @@ client.commands.load({
 	},
 	options: {
 		errorOnNoMatches: true,
-		extensions: ["ts"],
 		subfolderDepth: 1,
 		deploy: true,
+		extensions: ["ts"],
 	},
 });
 client.login(process.env.TOKEN);

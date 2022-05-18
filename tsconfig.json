@@ -7,6 +7,6 @@
     "noEmitHelpers": true,
     "importsNotUsedAsValues": "error",
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
-  }
+    "experimentalDecorators": true,
+  },
 }

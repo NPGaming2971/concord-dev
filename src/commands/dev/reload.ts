@@ -45,7 +45,7 @@ export class ReloadCommand extends Command {
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<any> {
 		await interaction.deferReply();
-		const { client, options } = interaction;
+				const { client, options } = interaction;
 		const commandToReload = options.getString('command', true).toLowerCase();
 
 		if (commandToReload !== 'all') {

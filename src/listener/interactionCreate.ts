@@ -1,8 +1,8 @@
 import { ChannelType, Client, Formatters, Interaction, PermissionResolvable } from 'discord.js';
 import { Listener, ResponseFormatters } from '../structures/';
+import { Constants } from '../typings/constants';
 import { Converters } from '../utils/converters';
-import { Util } from '../utils/utils';
-
+import { fromAsync } from '@sapphire/result';
 export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 	constructor(client: Client) {
 		super(client, { name: 'interactionCreate' });
@@ -15,7 +15,7 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 			if (!command) return interaction.reply('Unknown command.');
 
 			if (command.preconditions) {
-				const { canRunIn, elevatedPermissions, requiredClientPermissions, whitelist } = command.preconditions;
+				const { canRunIn, elevatedPermissions, requiredUserPermissions, requiredClientPermissions, whitelist } = command.preconditions;
 
 				const { prepareError } = ResponseFormatters;
 				const formatPermissions = (permissions: PermissionResolvable[]) =>
@@ -24,7 +24,7 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 					channelTypes.map((i) => Formatters.inlineCode(Converters.splitPascalCase(ChannelType[i])!)).join(', ');
 
 				if (elevatedPermissions) {
-					if (!['792645340632317992'].includes(interaction.user.id)) return interaction.reply(prepareError('ELEVATED_PERMISSION_REQUIRED'));
+					if (!Constants.Administrators.includes(interaction.user.id)) return interaction.reply(prepareError('ELEVATED_PERMISSION_REQUIRED'));
 				}
 
 				if (whitelist) {
@@ -33,6 +33,15 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 					if (guilds && !guilds?.includes(interaction.guildId)) return interaction.reply(prepareError('DISALLOWED_LOCATION'));
 
 					if (channels && !channels?.includes(interaction.channelId)) return interaction.reply(prepareError('DISALLOWED_LOCATION'));
+				}
+
+				if (requiredUserPermissions) {
+					if (!interaction.memberPermissions.has(requiredUserPermissions))
+						return interaction.reply(
+							prepareError(`MISSING_USER_PERMISSIONS`, {
+								permissions: formatPermissions(requiredUserPermissions)
+							})
+						);
 				}
 
 				if (requiredClientPermissions) {
@@ -57,24 +66,24 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 
 			if (interaction.isChatInputCommand()) {
 				if (command.supportChatInput()) {
-					Util.fromAsync(command.chatInputRun.bind(command, interaction));
+					fromAsync(command.chatInputRun.bind(command, interaction));
 				}
 			}
 			if (interaction.isContextMenuCommand()) {
 				if (!command.supportContextMenu()) return;
 
 				if (interaction.isMessageContextMenuCommand() && command.supportMessageContextMenu())
-					Util.fromAsync(command.messageContextMenuRun.bind(command, interaction));
+					fromAsync(command.messageContextMenuRun.bind(command, interaction));
 
 				if (interaction.isUserContextMenuCommand() && command.supportUserContextMenu())
-					Util.fromAsync(command.userContextMenuRun.bind(command, interaction));
+					fromAsync(command.userContextMenuRun.bind(command, interaction));
 			}
 		} else if (interaction.isAutocomplete()) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);
 			if (!command) return interaction.respond([{ name: 'Unknown command.', value: 'unknown' }]);
 
 			if (command.supportAutocomplete()) {
-				Util.fromAsync(command.autocompleteRun.bind(command, interaction));
+				fromAsync(command.autocompleteRun.bind(command, interaction));
 			}
 		}
 	}
