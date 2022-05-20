@@ -1,6 +1,9 @@
 import { from, Result } from '@sapphire/result';
+import { TextInputStyle } from 'discord.js';
 import { GroupPermissionsBitfield } from '../src/structures';
 import type { GroupPermissionsString } from '../src/typings';
+
+const DefaultValidate = (): Result<void, string> => from(() => {});
 
 export class Setting {
 	constructor(data: SettingData) {
@@ -21,6 +24,8 @@ export class Setting {
 
 		if (this.isString() && data.type === SettingType.String) {
 			this.validate = data.validate;
+			
+			this.style = data.style
 
 			this.restraints.lengthRange = data.restraints?.lengthRange ?? [null, null];
 		}
@@ -82,6 +87,7 @@ interface StringSetting extends BaseSetting {
 	};
 	default: string | null;
 	validate: (value: string) => Result<void, string>;
+	style?: TextInputStyle
 }
 
 enum SettingType {
@@ -101,6 +107,7 @@ interface BaseSetting {
 	 * Group property access path.
 	 */
 	path: string;
+
 	type: SettingType;
 	restraints?: {
 		/**
@@ -128,40 +135,68 @@ export enum CategoryType {
 const data: SettingData[] = [
 	{
 		name: 'Group Name',
+		description: 'Your group name.',
 		type: SettingType.String,
-		validate: () => {
-			return from(() => {});
+		validate: (value: string) => {
+			return from(() => {
+				if (/^[a-z\d\-_ ]{3,32}$/gi.test(value)) return;
+				throw new Error('Group name can only contains `[a-z]`, `[A-Z]`, `[0-9]`, `-`, `_` characters.');
+			});
 		},
 		default: null,
 		path: 'appearances.name',
 		help: {
 			category: CategoryType.Appearances
-		}
+		},
+		restraints: {
+			lengthRange: [2, 32]
+		},
 	},
 	{
 		name: 'Group Status',
+		description: 'Control this group accessibility to others.',
 		type: SettingType.Choices,
 		path: 'status',
 		default: 'public',
 		options: [
 			{
-				name: "Public",
-				value: "public",
+				name: 'Public',
+				value: 'public',
+				description: 'Your group would be accessible by anyone that have your group tag or id.'
 			},
 			{
-				name: "Restricted",
-				value: "restricted",
+				name: 'Restricted',
+				value: 'restricted',
+				description:
+					'Users would have to send a request upon joining which would have to be manually accepted by another user with `Manage Members` group permissions to grant membership.'
 			},
 			{
-				name: "Protected",
-				value: "protected",
+				name: 'Protected',
+				value: 'protected',
+				description: 'Your group would require a password for entrance. Must set a password first to set this status.'
 			},
 			{
-				name: "Private",
-				value: "private",
-			},
+				name: 'Private',
+				value: 'private',
+				description: 'The group would not be accessible by anyone except the group owner, by any means.'
+			}
 		],
 		help: { category: CategoryType.Security }
+	},
+	{
+		name: 'Group Description',
+		path: 'appearances.description',
+		help: {
+			category: CategoryType.Appearances
+		},
+		description: 'Write something about your group!',
+		type: SettingType.String,
+		default: null,
+		restraints: {
+			lengthRange: [null, 500]
+		},
+		validate: DefaultValidate,
+		style: TextInputStyle.Paragraph
 	}
 ];
 

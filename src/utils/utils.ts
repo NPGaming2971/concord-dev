@@ -42,31 +42,29 @@ export class Util {
 		return (bytes / Math.pow(1024, e)).toFixed(2) + ' ' + ' KMGTP'.charAt(e) + 'B';
 	}
 
-	static flatten(obj: {[key: string]: any}) {
-		let result: {[key: string]: any} = {};
-	
-		for (const i in obj) {
-			if (typeof obj[i] === "object" && !Array.isArray(obj[i])) {
-				const temp = Object(obj[i]);
-				for (const j in temp) {
-					result[i + "." + j] = temp[j];
-				}
-			} else {
-				result[i] = obj[i];
-			}
+	static flatten(obj: GeneralObject, roots = [], sep = '.'): GeneralObject {
+		return Object.keys(obj).reduce(
+			(memo, prop) =>
+				Object.assign(
+					{},
+					memo,
+					Object.prototype.toString.call(obj[prop]) === '[object Object]'
+						? Util.flatten(obj[prop], roots.concat([prop] as any), sep)
+						: { [roots.concat([prop] as any).join(sep)]: obj[prop] }
+				),
+			{}
+		);
+	}
+
+	static unflatten(obj: GeneralObject) {
+		let result = {};
+		for (let i in obj) {
+			let keys = i.split('.');
+			keys.reduce((r: GeneralObject, e, j) => {
+				return r[e] || (r[e] = isNaN(Number(keys[j + 1])) ? (keys.length - 1 == j ? obj[i] : {}) : []);
+			}, result);
 		}
 		return result;
-	};
-
-	static unflatten(obj: {[key: string]: any}) {
-		let result = {}
-		for (let i in obj) {
-		  let keys = i.split('.')
-		  keys.reduce((r, e, j) => {
-			  //@ts-expect-error
-			return r[e] || (r[e] = isNaN(Number(keys[j + 1])) ? (keys.length - 1 == j ? obj[i] : {}) : [])
-		  }, result)
-		}
-		return result
-	  }
+	}
 }
+type GeneralObject = { [key: string | number | symbol]: any };

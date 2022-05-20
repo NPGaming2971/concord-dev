@@ -1,15 +1,24 @@
-import { ChannelType, Client, Formatters, Interaction, PermissionResolvable } from 'discord.js';
+import { ChannelType, Client, Formatters, Interaction, MessagePayload, PermissionResolvable } from 'discord.js';
 import { Listener, ResponseFormatters } from '../structures/';
 import { Constants } from '../typings/constants';
 import { Converters } from '../utils/converters';
 import { fromAsync } from '@sapphire/result';
+import { InteractionResponseType, Routes } from 'discord-api-types/v10';
 export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 	constructor(client: Client) {
 		super(client, { name: 'interactionCreate' });
 	}
 	public async run(interaction: Interaction) {
-		if (!interaction.inCachedGuild()) return;
-
+		if (!interaction.inCachedGuild()) {
+			interaction.client.rest.post(Routes.interactionCallback(interaction.id, interaction.token), {
+				body: {
+					type: InteractionResponseType.ChannelMessageWithSource,
+					data: new MessagePayload(interaction, { content: 'Location not allowed or missing bot scope upon inviting.' }),
+					auth: false
+				}
+			});
+			return;
+		}
 		if (interaction.isCommand()) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);
 			if (!command) return interaction.reply('Unknown command.');
@@ -24,7 +33,8 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 					channelTypes.map((i) => Formatters.inlineCode(Converters.splitPascalCase(ChannelType[i])!)).join(', ');
 
 				if (elevatedPermissions) {
-					if (!Constants.Administrators.includes(interaction.user.id)) return interaction.reply(prepareError('ELEVATED_PERMISSION_REQUIRED'));
+					if (!Constants.Administrators.includes(interaction.user.id))
+						return interaction.reply(prepareError('ELEVATED_PERMISSION_REQUIRED'));
 				}
 
 				if (whitelist) {

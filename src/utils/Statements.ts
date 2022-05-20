@@ -6,6 +6,7 @@ export class DatabaseStatement {
         fetchRegistriesOfGroup: "SELECT * FROM channels WHERE groupId = ?",
         groupCreate:
             "INSERT INTO groups (tag, id, ownerId, settings, appearances, entrance, data, locale, status, createdTimestamp, bans) values (@tag, @id, @ownerId, @settings, @appearances, @entrance, @data, @locale, @status, @createdTimestamp, @bans)",
+        groupUpdate: "REPLACE INTO groups (tag, id, ownerId, settings, appearances, entrance, data, locale, status, createdTimestamp, bans) values (@tag, @id, @ownerId, @settings, @appearances, @entrance, @data, @locale, @status, @createdTimestamp, @bans)",
         fetchGroupById: "SELECT * FROM groups WHERE id = ?",
         fetchGroupByTag: "SELECT * FROM groups WHERE LOWER(tag) = ?",
         deleteGroup: "DELETE FROM groups WHERE id = ?",

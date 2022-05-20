@@ -18,6 +18,7 @@ import { Command, Group } from '../../structures/';
 import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
 import { Util } from '../../utils/utils';
+import { isOk } from '@sapphire/result';
 export class SettingsCommand extends Command {
 	constructor() {
 		super({
@@ -55,10 +56,8 @@ export class SettingsCommand extends Command {
 		const group = interaction.client.groups.cache.get(targetGroup);
 		if (!group) return interaction.editReply('No such group.');
 
-		const groupData = Util.flatten(group.toJSON())
-		const optionEmbed = parseOption(option, group)
-
-		const embed = appendCurrentValue(optionEmbed, option.path, groupData)
+		const groupData = Util.flatten(group.toJSON());
+		const embed = appendCurrentValue(option, groupData);
 
 		const response = await interaction.editReply({ embeds: [embed], components: renderComponents(option) });
 
@@ -75,38 +74,81 @@ export class SettingsCommand extends Command {
 
 		const collector = response.createMessageComponentCollector({ filter, idle: 15000 });
 
-		collector.on('collect', async (i) => {
+		collector.on('collect', async (i): Promise<any> => {
 			if (i.isSelectMenu()) {
+				i.deferUpdate();
+				const newValue = i.values[0];
+				updateGroup({ group, interaction, newValue, option });
 			}
 
 			if (i.isButton()) {
+				if (i.customId === 'settings/toggle') {
+					i.deferUpdate();
+					updateGroup({ newValue: groupData[option.path] ? false : true, option, group, interaction });
+				}
+
+				if (i.customId === 'settings/resetToDefault') {
+					i.deferUpdate();
+					updateGroup({ newValue: option.default, option, group, interaction });
+				}
+
 				if (i.customId === 'settings/setNewValue') {
 					if (!option.isString()) return;
 
-					const filter = (m: ModalSubmitInteraction) => m.user.id === i.user.id && m.customId === `concord:eval/${i.id}`;
+					const filter = (m: ModalSubmitInteraction) => m.user.id === i.user.id && m.customId === `concord:settings/${i.id}`;
 
-					const textField = new TextInputBuilder().setCustomId(`textInput`).setStyle(TextInputStyle.Short).setLabel('New value');
+					const [min, max] = option.restraints?.lengthRange ?? [0, 4000];
+					const textField = new TextInputBuilder()
+						.setCustomId(`textInput`)
+						.setStyle(option.style ?? TextInputStyle.Short)
+						.setLabel('New value')
+						.setMinLength(min ?? 0)
+						.setMaxLength(max ?? 4000)
+						.setValue(groupData[option.path] ?? '')
+						.setRequired(true);
 
 					const modal = new ModalBuilder()
 						.setComponents(new ActionRowBuilder<TextInputBuilder>().setComponents(textField))
 						.setCustomId(`concord:settings/${i.id}`)
 						.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`);
 
-					i.showModal(modal)
+					i.showModal(modal);
 
 					try {
-						const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter })
+						const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter });
 
-						//@ts-expect-error
-						const newValue = modalInteraction.fields.getTextInputValue('textInput')
+						const newValue = modalInteraction.fields.getTextInputValue('textInput');
 
-						
+						const validationCheck = option.validate(newValue);
 
-						
-					} catch(_) {}
+						if (!isOk(validationCheck)) {
+							return modalInteraction.reply(`Validation failed:\n` + validationCheck.error);
+						}
+
+						updateGroup({ newValue, option, group, interaction: modalInteraction });
+					} catch (_) {}
 				}
 			}
 		});
+
+		collector.on('end', () => {
+			interaction.editReply({ components: [] });
+		});
+
+		type UpdateGroupOption = {
+			newValue: string | boolean | null;
+			option: Setting;
+			group: Group;
+			interaction: any;
+		};
+		function updateGroup({ group, interaction, newValue, option }: UpdateGroupOption) {
+			groupData[option.path] = newValue;
+
+			group.edit(Util.unflatten(groupData));
+			interaction[interaction.replied ? 'editReply' : 'update']({
+				embeds: [appendCurrentValue(option, groupData)]
+			});
+		}
 	}
 
 	public override autocompleteRun(interaction: AutocompleteInteraction) {
@@ -116,17 +158,20 @@ export class SettingsCommand extends Command {
 
 		switch (focusedValue.name) {
 			case 'option-name':
-				if (!value.length) return interaction.respond(Settings.map((i) => ({ name: i.name, value: i.path })).slice(0, 25));
+				if (!value.length)
+					return interaction.respond(Settings.map((i) => ({ name: `${i.help?.category}: ${i.name}`, value: i.path })).slice(0, 25));
 
 				const fuse = new Fuse(Settings, {
-					keys: ['name'],
+					keys: ['name', 'help.category'],
 					includeScore: true,
 					shouldSort: true
 				});
 
 				const results = fuse.search(value);
 
-				return interaction.respond(results.map((i) => ({ name: i.item.name, value: i.item.path })).slice(0, 25));
+				return interaction.respond(
+					results.map((i) => ({ name: `${i.item.help?.category}: ${i.item.name}`, value: i.item.path })).slice(0, 25)
+				);
 			case 'target-group':
 				const coll = interaction.client.groups.cache.filter((i) => i.ownerId === interaction.user.id);
 
@@ -142,21 +187,24 @@ export class SettingsCommand extends Command {
 	}
 }
 
-function appendCurrentValue(embed: EmbedBuilder, settingPath: string, flattenedGroup: {[key: string]: any}) {
-	return embed.spliceFields(2, 0, {
+function appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }) {
+	const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
+
+	return parseOption(option, flattenedGroup.tag).addFields({
 		name: 'Current value',
-		value: String(flattenedGroup[settingPath]),
-		inline: true
-	})
+		//@ts-expect-error
+		value: Formatters[isParagraph ? 'codeBlock' : 'inlineCode'](String(flattenedGroup[option.path])),
+		inline: !isParagraph
+	});
 }
 
-function parseOption(option: Setting, group: Group) {
+function parseOption(option: Setting, groupTag: string) {
 	const embed = new EmbedBuilder()
 		.setAuthor({ name: `in: ${option.help?.category ?? 'Uncategorized'}` })
 		.setDescription(option.description?.length ? option.description : 'No description provided.')
 		.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`)
 		.setFooter({
-			text: `Currently setting: '@${group.tag}'. Option type: '${option.type}'.`
+			text: `Currently setting: '@${groupTag}'. Option type: '${option.type}'.`
 		})
 		.addFields({
 			name: 'Default value',

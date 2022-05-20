@@ -4,7 +4,9 @@ import { GroupMessageManager } from '../../manager/GroupMessageManager';
 import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
 import type { APIGroup } from '../../typings';
 import type { GroupStatusType } from '../../typings/enums';
-
+import { DatabaseUtil } from '../../utils/DatabaseUtil';
+import { Util } from '../../utils/utils';
+const { fallback } = Util;
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
 		super(client);
@@ -12,7 +14,7 @@ export class Group extends Base implements Group {
 		this.channels = new GroupRegistryManager(this);
 		this.messages = new GroupMessageManager(this);
 		this.database = database;
-		this.raw = data
+		this.raw = data;
 		this._patch(data);
 	}
 
@@ -47,22 +49,32 @@ export class Group extends Base implements Group {
 		return this.messages.create(message);
 	}
 
-	private _patch(data: APIGroup) {
-		this.tag = data.tag;
+	private _patch(data: Partial<APIGroup>) {
+		if (data.tag) {
+			this.tag = data.tag;
+		}
 
-		this.id = data.id;
+		if (data.id) {
+			this.id = data.id;
+		}
 
-		this.createdAt = new Date(data.createdTimestamp!);
+		if (data.createdTimestamp) {
+			this.createdAt = new Date(data.createdTimestamp);
+			this.createdTimestamp = data.createdTimestamp;
+		}
 
-		this.channelLimit = data.data.channelLimit;
+		if (data.data?.channelLimit) {
+			this.channelLimit = data.data.channelLimit;
+		}
 
-		this.createdTimestamp = data.createdTimestamp!;
-
-		this.ownerId = data.ownerId;
+		if (data.ownerId) {
+			this.ownerId = data.ownerId;
+		}
 
 		this.locale = data.locale as LocaleString | null;
-
-		this.status = data.status;
+		if (data.status) {
+			this.status = data.status;
+		}
 
 		this.channels.cache.clear();
 		const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
@@ -70,7 +82,7 @@ export class Group extends Base implements Group {
 			this.channels._add(registry, true, { id: registry.id, extras: [this] });
 		}
 
-		if ('appearances' in data) {
+		if (data.appearances) {
 			this.avatar = data.appearances.avatar;
 
 			if ('banner' in data.appearances) this.banner = data.appearances.banner ?? null;
@@ -82,7 +94,24 @@ export class Group extends Base implements Group {
 	}
 
 	public override toJSON(): APIGroup {
-		return this.raw
+		return this.raw;
+	}
+
+	public edit(data: Partial<APIGroup>) {
+
+		const apiGroup = Util.flatten(this.toJSON())
+		const updateData = Util.flatten(data)
+
+		for (const [key, value] of Object.entries(updateData)) {
+			const preData = apiGroup[key]
+			apiGroup[key] = fallback(value, preData)
+		}
+
+		//TODO
+		const groupData = Util.unflatten(Object.assign(apiGroup, {settings: {}}))
+
+		this.client.statements.groupUpdate.run(DatabaseUtil.makeDatabaseCompatible(groupData));
+		this._patch(groupData);
 	}
 }
 
@@ -97,7 +126,7 @@ export interface Group {
 	createdTimestamp: number;
 	createdAt: Date;
 	channelLimit: number;
-	raw: APIGroup
+	raw: APIGroup;
 	ownerId: string;
 	locale: LocaleString | null;
 	channels: GroupRegistryManager;

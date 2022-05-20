@@ -18,7 +18,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 	}
 
 	//TODO: Validate locale
-	public create(tag: string, { avatar = null, banner = null, owner, name = null, description = null, locale = null }: GroupCreateOptions) {
+	public create(tag: string, { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' }: GroupCreateOptions) {
 		const ownerId = this.client.users.resolveId(owner);
 
 		if (!ownerId)
