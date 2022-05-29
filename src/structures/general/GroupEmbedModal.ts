@@ -11,11 +11,11 @@ export class GroupEmbedModal extends EmbedBuilder {
 	}
 
 	public showLocale() {
-		return this.addFields({ name: 'Locale', value: this.group.getLocale()!, inline: true });
+		return this.addFields({ name: 'Locale', value: this.group.displayLocale()!, inline: true });
 	}
 
 	public showName() {
-		return this.setTitle(this.group.status === GroupStatusType.Private ? 'Unknown' : this.group.getName());
+		return this.setTitle(this.group.status === GroupStatusType.Private ? 'Unknown' : this.group.displayName());
 	}
 
 	public showOwner() {
@@ -35,14 +35,14 @@ export class GroupEmbedModal extends EmbedBuilder {
 	}
 
 	public showDescription() {
-		return this.setDescription(this.group.status === GroupStatusType.Private ? 'Unable to load description.' : this.group.getDescription());
+		return this.setDescription(this.group.status === GroupStatusType.Private ? 'Unable to load description.' : this.group.displayDescription());
 	}
 
 	public showAvatar() {
-		return this.setThumbnail(this.group.getAvatarURL());
+		return this.setThumbnail(this.group.displayAvatarURL());
 	}
 	public showBanner() {
-		return this.setImage(this.group.getBannerURL());
+		return this.setImage(this.group.displayBannerURL());
 	}
 
 	public showId() {

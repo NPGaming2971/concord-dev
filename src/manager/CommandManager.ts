@@ -6,7 +6,7 @@ import { Enumerable } from '../utils/decorators';
 import glob from 'glob';
 import { promisify } from 'node:util';
 import { join, basename, normalize } from 'node:path';
-import { Util } from '../utils/utils';
+import { Util } from '../utils/';
 import { Routes } from 'discord-api-types/v10';
 import { Constants } from '../typings/constants';
 import type { Listener, Command } from '../structures/';
@@ -31,19 +31,14 @@ export class CommandManager extends BaseManager {
 	}
 
 	private handlePathOption(path: string, option?: CommandLoadOptions['options']) {
-
-		const { extensions = ['ts'], subfolderDepth } = option ?? {}
+		const { extensions = ['ts'], subfolderDepth } = option ?? {};
 
 		if (subfolderDepth) {
 			const array = new Array(subfolderDepth).fill('**');
 			path = join(path, ...array);
 		}
 
-		path = extensions
-			? extensions.length > 1
-				? `${path}/*.{${extensions.join(',')}}`
-				: `${path}/*.${extensions[0]}`
-			: join(path, '*');
+		path = extensions ? (extensions.length > 1 ? `${path}/*.{${extensions.join(',')}}` : `${path}/*.${extensions[0]}`) : join(path, '*');
 		return normalize(path);
 	}
 	/**
@@ -52,8 +47,8 @@ export class CommandManager extends BaseManager {
 	 */
 	public async load(option: CommandLoadOptions) {
 		const { path, options = {} } = option;
-		const { deploy, errorOnEmptyFile, errorOnNoMatches } = options
-		let { events, commands } = path
+		const { deploy, errorOnEmptyFile, errorOnNoMatches } = options;
+		let { events, commands } = path;
 
 		if (commands) {
 			commands = this.handlePathOption(commands, option.options);
@@ -126,7 +121,15 @@ export class CommandManager extends BaseManager {
 		}
 	}
 
-	public async loadCommands(globPattern: string, options?: CommandAndEventLoadOptions) {
+	public refreshCache(path: string) {
+		delete require.cache[require.resolve(path)];
+
+		const file = import(path);
+
+		return file;
+	}
+
+	protected async loadCommands(globPattern: string, options?: CommandAndEventLoadOptions) {
 		const files = await globPromise(globPattern);
 
 		if (!files.length && options?.errorOnNoMatches) {
@@ -134,16 +137,13 @@ export class CommandManager extends BaseManager {
 		}
 
 		for (const file of files) {
-			delete require.cache[require.resolve(file)];
-
-			const commandFile = await import(file);
+			const commandFile = await this.refreshCache(file);
 			const command = Object.values({ ...commandFile })[0] as any;
 
 			if (typeof command === 'undefined') {
 				if (!options?.errorOnEmptyFile) {
 					continue;
-				} else
-					throw new ConcordError('EMPTY_COMMAND_FILE', basename(file));
+				} else throw new ConcordError('EMPTY_COMMAND_FILE', basename(file));
 			}
 			const constructedCommand = Reflect.construct(command, []) as Command;
 
@@ -155,16 +155,15 @@ export class CommandManager extends BaseManager {
 		firstRun = false;
 	}
 
-	private async loadEvents(globPattern: string, options?: CommandAndEventLoadOptions) {
+	public async loadEvents(globPattern: string, options?: CommandAndEventLoadOptions) {
 		const files = await globPromise(globPattern);
+
 		if (!files.length && options?.errorOnNoMatches) {
 			throw new Error('Specified pattern has no matches.');
 		}
 
 		for (const file of files) {
-			delete require.cache[require.resolve(file)];
-
-			const eventFile = await import(file);
+			const eventFile = await this.refreshCache(file);
 
 			const event = Object.values({ ...eventFile })[0] as any;
 

@@ -5,11 +5,14 @@ import { Logger } from './Logger';
 import { GroupManager } from '../manager/GroupManager';
 import SQLite from 'better-sqlite3';
 
-import type { Command, Group } from '../structures/';
+import type { ChannelRegistry, Command, Group } from '../structures/';
 import type BetterSqlite3 from 'better-sqlite3';
 import { ChannelRegistryManager } from '../manager/ChannelRegistryManager';
-import '../utils/extensions';
+import '../utils/Extensions';
 import { DatabaseStatement, PreparedStatement } from '../utils/Statements';
+import type { GroupRegistryManager } from '../manager/GroupRegistryManager';
+import type { GroupMessageManager } from '../manager/GroupMessageManager';
+import type { GroupMessage } from '../structures/general/GroupMessage';
 
 export class ConcordClient extends Client<true> {
 	@Enumerable(false)
@@ -40,7 +43,7 @@ export class ConcordClient extends Client<true> {
 				GatewayIntentBits.GuildMessageTyping,
 				GatewayIntentBits.MessageContent
 			],
-			partials: [Partials.User, Partials.GuildMember, Partials.Message]
+			partials: [Partials.User, Partials.GuildMember, Partials.Message],
 		});
 	}
 }
@@ -57,6 +60,9 @@ declare module 'discord.js' {
 	interface Caches {
 		CommandManager: [manager: typeof CommandManager, holds: typeof Command];
 		GroupManager: [manager: typeof GroupManager, holds: typeof Group];
+		ChannelRegistryManager: [manager: ChannelRegistryManager, holds: typeof ChannelRegistry];
+		GroupRegistryManager: [manager: GroupRegistryManager, holds: typeof ChannelRegistry];
+		GroupMessageManager: [manager: GroupMessageManager, holds: typeof GroupMessage]
 	}
 	interface ClientEvents {
 		groupCreate: [group: Group];

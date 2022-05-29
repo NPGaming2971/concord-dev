@@ -30,7 +30,7 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 
 		const registry = this.client.registry.fetch(id);
 		if (!registry) throw new Error("Channel is not present in database.");
-
+		
 		registry.edit({ groupId: null });
 
 		this.cache.delete(registry.channelId);

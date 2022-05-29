@@ -5,18 +5,13 @@ export const Constants = {
 	DefaultColor: 0x5e92cc,
 	DevelopmentGuildId: ['755892553827483799', '847874027149721680'],
 	Administrators: ['792645340632317992'],
-	BaseFilter: (interaction: Interaction<'cached'> | Message) => async (i: ButtonInteraction) => {
+	BaseFilter: (context: Interaction<'cached'> | Message) => async (i: ButtonInteraction) => {
 
-        let author
-        if (interaction instanceof Message) {
-            author = interaction.author.id
-        } else {
-            author = interaction.user.id
-        }
-		await i.deferUpdate();
-		if (i.user.id === author) return true;
+        let authorId = context instanceof Message ? context.author.id : context.user.id
+
+		if (i.user.id === authorId) return true;
 		else {
-			i.followUp({ content: 'Not your menu.', ephemeral: true });
+			i.reply({ content: 'Not your menu.', ephemeral: true });
 			return false;
 		}
 	},

@@ -24,7 +24,7 @@ export class CreateCommand extends Command {
 
 		const tag = interaction.options.getString("tag", true);
 		
-		if (interaction.client.groups.cache.has(tag))
+		if (interaction.client.groups.cache.find(i => i.tag === tag))
 			return interaction.editReply("already existed");
 
 		interaction.client.groups.create(tag, { owner: interaction.user });

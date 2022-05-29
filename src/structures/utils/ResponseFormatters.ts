@@ -1,9 +1,9 @@
 import { CDN } from '@discordjs/rest';
-import { Attachment, EmbedBuilder, Formatters, GuildChannel, Message, MessageMentions, Sticker } from 'discord.js';
+import { Attachment, EmbedBuilder, Formatters, GuildChannel, Message, MessageMentions, Sticker, WebhookMessageOptions } from 'discord.js';
 import { Routes } from 'discord.js/node_modules/discord-api-types/v10';
 import { Constants } from '../../typings/constants';
 import { Error } from '../../typings/enums';
-import { Util } from '../../utils/utils';
+import { Util } from '../../utils/';
 
 export class ResponseFormatters {
 	public static prepareError(errorId: keyof typeof Error, template?: { [key: string]: string }) {
@@ -66,5 +66,33 @@ export class ResponseFormatters {
 		return (
 			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent} ${icon}\n\u200b\n${message.content}`
 		);
+	}
+
+	static async renderMessage(message: Message): Promise<WebhookMessageOptions> {
+		const { renderAttachment, formatSticker, parseMentions, parseReply } = ResponseFormatters;
+		const embeds = message.embeds.map((embed) => new EmbedBuilder(embed.data));
+		let [passed, video] = message.attachments.partition((att) => !att.contentType?.startsWith('video/'));
+
+		const images = passed.map((att) => {
+			return  renderAttachment(att);
+		});
+
+		const stickers = message.stickers.map((sticker) => formatSticker(sticker));
+
+		const attachments = video.toJSON();
+
+		//Preparing responses
+		const attachmentsToSend = embeds.concat(images, stickers);
+
+		return {
+			embeds: attachmentsToSend,
+			files: attachments,
+			username: message.author.tag,
+			avatarURL: message.author.displayAvatarURL(),
+			allowedMentions: {
+				parse: ['users']
+			},
+			content: message.reference?.messageId ? parseReply(message, await message.fetchReference()) : parseMentions(message)
+		};
 	}
 }

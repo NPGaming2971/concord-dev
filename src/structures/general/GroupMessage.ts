@@ -1,13 +1,15 @@
 import { Base, Client } from 'discord.js';
 import type { APIMessage } from 'discord.js/node_modules/discord-api-types/v10';
 import type { APIGroupMessage, RegisterableChannel } from '../../typings';
-import { Util } from '../../utils/utils';
+import { Util } from '../../utils/';
 import type { ChannelRegistry } from './ChannelRegistry';
 import type { Group } from './Group';
+import { compact } from 'lodash'
+import { ConcordError } from '../errors/ConcordError';
 
 export interface GroupMessage {
 	webhook: string;
-	parentId: [string, string];
+	parentId: [string, string] | [null, null];
 	message: APIMessage
 	group: Group;
 	registry: ChannelRegistry
@@ -32,11 +34,15 @@ export class GroupMessage extends Base {
 
 	public fetchParent() {
 		const [channelId, messageId] = this.parentId;
-		return (this.client.channels.cache.get(channelId) as RegisterableChannel)?.messages.fetch(messageId);
+
+		if (!messageId || !channelId) throw new ConcordError('THIS_MESSAGE_IS_ORPHANED')
+
+		const channel = this.client.channels.cache.get(channelId) as RegisterableChannel | undefined
+		return channel?.messages.fetch(messageId);
 	}
 
 	public hasParent() {
-		return Reflect.has(this, 'parentId');
+		return Boolean(compact(this.parentId).length)
 	}
 
 	public fetchWebhook() {

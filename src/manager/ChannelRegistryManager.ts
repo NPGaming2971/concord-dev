@@ -1,20 +1,19 @@
-import { BaseFetchOptions, CachedManager, ChannelResolvable, Client } from "discord.js";
-import { ChannelRegistry } from "../structures/";
-import type { APIChannelRegistry, RegisterableChannel, RegistryCreateOptions } from "../typings";
+import { BaseFetchOptions, CachedManager, ChannelResolvable, Client } from 'discord.js';
+import { ChannelRegistry } from '../structures/';
+import type { APIChannelRegistry, RegisterableChannel, RegistryCreateOptions } from '../typings';
 
-export class ChannelRegistryManager extends CachedManager<
-	string,
-	ChannelRegistry,
-	ChannelRegistry
-> {
+// Reduce database workload. Block unregistered channel.
+const Blocker = new Set<string>();
 
-
-	constructor(client: Client) { 
+export class ChannelRegistryManager extends CachedManager<string, ChannelRegistry, ChannelRegistry> {
+	constructor(client: Client) {
 		super(client, ChannelRegistry);
 	}
 
 	fetch(channel: ChannelResolvable, { cache = true, force = false }: BaseFetchOptions = {}) {
 		const id = this.client.channels.resolveId(channel);
+
+		if (Blocker.has(id)) return null;
 
 		if (!force) {
 			const existing = this.cache.get(id);
@@ -24,19 +23,25 @@ export class ChannelRegistryManager extends CachedManager<
 		const { getRegistry } = this.client.statements;
 
 		const data: APIChannelRegistry | undefined = getRegistry.get(id);
-	
-		if (!data) return null
 
-		const group = data.groupId ? this.client.groups.cache.get(data.groupId) : null;
-		return this._add(data, cache, { id: id, extras: [group] });
+		if (!data) {
+			Blocker.add(id);
+			return null;
+		}
+
+		return this._add(data, cache, { id: id, extras: [] });
 	}
 
-	delete(channel: ChannelResolvable) { 
+	delete(channel: ChannelResolvable) {
 		const id = this.client.channels.resolveId(channel);
 		const { deleteRegistry } = this.client.statements;
 
+		const registry = this.cache.get(id);
+		registry?.group?.channels.kick(id);
+
 		deleteRegistry.run(id);
 		this.cache.delete(id);
+		Blocker.add(id);
 	}
 
 	create(options: RegistryCreateOptions) {
@@ -49,11 +54,12 @@ export class ChannelRegistryManager extends CachedManager<
 			id: id,
 			guildId: guildId,
 			webhookurl: url,
-			groupId: groupId,
+			groupId: groupId
 		};
 
 		createRegistry.run(data);
 
+		Blocker.delete(id);
 		if (this.cache.has(id)) {
 			return this.cache.get(id)!._patch(data);
 		} else {
@@ -61,6 +67,8 @@ export class ChannelRegistryManager extends CachedManager<
 		}
 	}
 	has(channel: ChannelResolvable) {
-		return this.fetch(channel) !== null;
+		const bool = this.fetch(channel) !== null;
+		Blocker[bool ? 'delete' : 'add'](this.client.channels.resolveId(channel));
+		return bool;
 	}
 }

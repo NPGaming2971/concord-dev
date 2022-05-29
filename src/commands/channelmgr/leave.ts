@@ -1,6 +1,5 @@
 import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
 import { Command } from '../../structures/';
-import type { RegisterableChannel } from '../../typings';
 
 export class LeaveCommand extends Command {
 	constructor() {
@@ -22,9 +21,12 @@ export class LeaveCommand extends Command {
 			}
 		});
 	}
-	public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<any> {
-		const channel = (interaction.options.getChannel('channel') as RegisterableChannel) ?? interaction.channel;
-		const targetGroup = interaction.client.registry.fetch(interaction.channelId)?.group;
+	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>): Promise<any> {
+		const channel = interaction.options.getChannel('channel')! ?? interaction.channel;
+
+		if (!channel.isRegisterable()) return
+
+		const targetGroup = channel.fetchRegistry()?.group;
 
 		await interaction.deferReply();
 

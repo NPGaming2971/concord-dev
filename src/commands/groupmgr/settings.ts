@@ -17,7 +17,7 @@ import {
 import { Command, Group } from '../../structures/';
 import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
-import { Util } from '../../utils/utils';
+import { Util } from '../../utils/';
 import { isOk } from '@sapphire/result';
 export class SettingsCommand extends Command {
 	constructor() {
@@ -53,13 +53,13 @@ export class SettingsCommand extends Command {
 
 		if (!option) return interaction.editReply('No such option.');
 
-		const group = interaction.client.groups.cache.get(targetGroup);
+		const group = interaction.client.groups.fetch(targetGroup);
 		if (!group) return interaction.editReply('No such group.');
 
 		const groupData = Util.flatten(group.toJSON());
-		const embed = appendCurrentValue(option, groupData);
+		const embed = this.appendCurrentValue(option, groupData);
 
-		const response = await interaction.editReply({ embeds: [embed], components: renderComponents(option) });
+		const response = await interaction.editReply({ embeds: [embed], components: this.renderComponents(option) });
 
 		const filter = (i: MessageComponentInteraction) => {
 			if (i.user.id === interaction.user.id) return true;
@@ -84,7 +84,7 @@ export class SettingsCommand extends Command {
 			if (i.isButton()) {
 				if (i.customId === 'settings/toggle') {
 					i.deferUpdate();
-					updateGroup({ newValue: groupData[option.path] ? false : true, option, group, interaction });
+					updateGroup({ newValue: !groupData[option.path], option, group, interaction });
 				}
 
 				if (i.customId === 'settings/resetToDefault') {
@@ -119,7 +119,7 @@ export class SettingsCommand extends Command {
 
 						const newValue = modalInteraction.fields.getTextInputValue('textInput');
 
-						const validationCheck = option.validate(newValue);
+						const validationCheck = await option.validate(newValue);
 
 						if (!isOk(validationCheck)) {
 							return modalInteraction.reply(`Validation failed:\n` + validationCheck.error);
@@ -141,12 +141,12 @@ export class SettingsCommand extends Command {
 			group: Group;
 			interaction: any;
 		};
-		function updateGroup({ group, interaction, newValue, option }: UpdateGroupOption) {
+		const updateGroup = ({ group, interaction, newValue, option }: UpdateGroupOption) => {
 			groupData[option.path] = newValue;
 
 			group.edit(Util.unflatten(groupData));
 			interaction[interaction.replied ? 'editReply' : 'update']({
-				embeds: [appendCurrentValue(option, groupData)]
+				embeds: [this.appendCurrentValue(option, groupData)]
 			});
 		}
 	}
@@ -185,73 +185,74 @@ export class SettingsCommand extends Command {
 				return interaction.respond([]);
 		}
 	}
-}
 
-function appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }) {
-	const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
-
-	return parseOption(option, flattenedGroup.tag).addFields({
-		name: 'Current value',
-		//@ts-expect-error
-		value: Formatters[isParagraph ? 'codeBlock' : 'inlineCode'](String(flattenedGroup[option.path])),
-		inline: !isParagraph
-	});
-}
-
-function parseOption(option: Setting, groupTag: string) {
-	const embed = new EmbedBuilder()
-		.setAuthor({ name: `in: ${option.help?.category ?? 'Uncategorized'}` })
-		.setDescription(option.description?.length ? option.description : 'No description provided.')
-		.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`)
-		.setFooter({
-			text: `Currently setting: '@${groupTag}'. Option type: '${option.type}'.`
-		})
-		.addFields({
-			name: 'Default value',
-			value: Formatters.inlineCode(String(option.default)),
-			inline: true
-		});
-
-	if (option.isChoices()) {
-		embed.spliceFields(0, 0, {
-			name: 'Available options',
-			value: option.options
-				.map(
-					(e) =>
-						`> **${e.name}** (${Formatters.inlineCode(e.value)})\n${e.description?.length ? e.description : 'No description provided.'}`
-				)
-				.join(`\n\n`)
+	private appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }) {
+		const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
+	
+		const data = Util.escapeMaskedLink(Util.escapeQuote(String(flattenedGroup[option.path])));
+	
+		return this.parseOption(option, flattenedGroup.tag).addFields({
+			name: 'Current value',
+			value: isParagraph ? data : Formatters.inlineCode(data),
+			inline: !isParagraph
 		});
 	}
-
-	return embed;
-}
-
-function renderComponents(setting: Setting) {
-	const resetButton = new ButtonBuilder().setCustomId('settings/resetToDefault').setLabel('Reset to default').setStyle(ButtonStyle.Secondary);
-
-	const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents(resetButton);
-	const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
-
-	if (setting.isString()) {
-		const setNewValueButton = new ButtonBuilder().setCustomId('settings/setNewValue').setLabel('Set new value').setStyle(ButtonStyle.Primary);
-		baseButtonActionRow.setComponents(setNewValueButton, resetButton);
+	
+	private parseOption(option: Setting, groupTag: string) {
+		const embed = new EmbedBuilder()
+			.setAuthor({ name: `in: ${option.help?.category ?? 'Uncategorized'}` })
+			.setDescription(option.description?.length ? option.description : 'No description provided.')
+			.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`)
+			.setFooter({
+				text: `Currently setting: '@${groupTag}'. Option type: '${option.type}'.`
+			})
+			.addFields({
+				name: 'Default value',
+				value: Formatters.inlineCode(String(option.default)),
+				inline: true
+			});
+	
+		if (option.isChoices()) {
+			embed.spliceFields(0, 0, {
+				name: 'Available options',
+				value: option.options
+					.map(
+						(e) =>
+							`> **${e.name}** (${Formatters.inlineCode(e.value)})\n${e.description?.length ? e.description : 'No description provided.'}`
+					)
+					.join(`\n\n`)
+			});
+		}
+	
+		return embed;
 	}
-
-	if (setting.isBoolean()) {
-		const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
-		baseButtonActionRow.setComponents(toggleButton, resetButton);
+	
+	private renderComponents(setting: Setting) {
+		const resetButton = new ButtonBuilder().setCustomId('settings/resetToDefault').setLabel('Reset to default').setStyle(ButtonStyle.Secondary);
+	
+		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents(resetButton);
+		const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
+	
+		if (setting.isString()) {
+			const setNewValueButton = new ButtonBuilder().setCustomId('settings/setNewValue').setLabel('Set new value').setStyle(ButtonStyle.Primary);
+			baseButtonActionRow.setComponents(setNewValueButton, resetButton);
+		}
+	
+		if (setting.isBoolean()) {
+			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
+			baseButtonActionRow.setComponents(toggleButton, resetButton);
+		}
+	
+		if (setting.isChoices()) {
+			const choiceMenu = new SelectMenuBuilder()
+				.setCustomId('settings/menu')
+				.setMaxValues(1)
+				.setMinValues(1)
+				.setPlaceholder('Choose an option...')
+				.setOptions(...setting.options.map((option) => ({ label: option.name, value: option.value })));
+	
+			baseSelectMenuActionRow.setComponents(choiceMenu);
+		}
+		return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];
 	}
-
-	if (setting.isChoices()) {
-		const choiceMenu = new SelectMenuBuilder()
-			.setCustomId('settings/menu')
-			.setMaxValues(1)
-			.setMinValues(1)
-			.setPlaceholder('Choose an option...')
-			.setOptions(...setting.options.map((option) => ({ label: option.name, value: option.value })));
-
-		baseSelectMenuActionRow.setComponents(choiceMenu);
-	}
-	return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];
 }

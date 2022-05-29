@@ -38,7 +38,9 @@ export class RegisterCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
-		const channel = (interaction.options.getChannel('channel') as RegisterableChannel) ?? interaction.channel;
+		const channel = interaction.options.getChannel('channel')! ?? interaction.channel;
+
+		if (!channel.isRegisterable()) return
 
 		const forceCreateNew = interaction.options.getBoolean('force-create-new') ?? false;
 
@@ -48,7 +50,7 @@ export class RegisterCommand extends Command {
 		if (!channel?.permissionsFor(interaction.guild.me!)?.has('ManageWebhooks'))
 			return interaction.editReply(prepareError('MISSING_CLIENT_PERMISSIONS', { permissions: 'ManageWebhooks' }));
 
-		if (interaction.client.registry.fetch(channel)) {
+		if (channel.fetchRegistry()) {
 			return interaction.editReply('This channel is already set up.');
 		}
 
@@ -57,18 +59,18 @@ export class RegisterCommand extends Command {
 		if (webhooks.size !== 0 || !forceCreateNew) {
 			const [passed, failed] = webhooks.partition((e) => e.id === webhooks.first()?.id);
 
-			if (!passed.size) return createWebhook();
+			if (!passed.size) return createWebhook(channel);
 
 			interaction.client.registry.create({ channel, url: passed.first()!.url, groupId: null });
 
 			failed.map((e) => e.delete());
 
 			interaction.editReply(`Successfully registered this channel. Now it's ready to connect to any Concord groups.`);
-		} else createWebhook();
+		} else createWebhook(channel);
 
 		return;
 
-		function createWebhook() {
+		function createWebhook(channel: RegisterableChannel) {
 			channel
 				.createWebhook('Concord', { reason: `Requested by ${interaction.user.tag}` })
 				.then(async (webhook) => {

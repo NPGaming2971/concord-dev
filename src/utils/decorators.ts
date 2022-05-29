@@ -1,4 +1,5 @@
-import type { NonNullObject } from "../typings";
+import type { Constructable } from 'discord.js';
+import type { NonNullObject } from '../typings';
 
 export function Enumerable(value: boolean) {
 	return (target: unknown, key: string) => {
@@ -16,15 +17,16 @@ export function Enumerable(value: boolean) {
 	};
 }
 
-export function ApplyToClass(targetClass: any): MethodDecorator {
-	return (target, key, _descriptor) => {
-		const functionToApply = Reflect.get(target, key)
+export function ApplyToClass<T>(targetClass: Constructable<T>): MethodDecorator {
+	return (target: object, key: string | symbol) => {
+		const functionToApply = Reflect.get(target, key);
 		Object.defineProperty(targetClass.prototype, key, {
-			value: functionToApply.bind(targetClass.prototype),
-			writable: true,
-			enumerable: false
-		})
-	}
+			get() {
+				return functionToApply.bind(this as NonNullObject);
+			},
+			enumerable: false,			
+		});
+	};
 }
 
 export function createProxy<T extends object>(target: T, handler: Omit<ProxyHandler<T>, 'get'>): T {

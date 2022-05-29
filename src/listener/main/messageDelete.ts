@@ -23,8 +23,11 @@ export class MessageCreateEvent extends Listener<'messageDelete'> {
 
 		const registry = message.client.registry.fetch(message.channelId);
 
-		if (!registry || !registry.groupId || !registry.webhook) return; 
+		if (!registry || !registry.group || !registry.webhook) return;
 		//Responding
-		registry.group?.messages.delete(message)
+
+		console.log(registry)
+
+		registry.group.messages.delete(message);
 	}
 }

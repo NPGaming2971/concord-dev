@@ -12,7 +12,7 @@ import {
 	UserContextMenuCommandInteraction,
 } from "discord.js";
 import { Collection } from "discord.js";
-import { Converters } from "../../utils/converters";
+import { Converters } from "../../utils/Converters";
 
 export abstract class Command {
 	public readonly data: CommandConstructor["data"];

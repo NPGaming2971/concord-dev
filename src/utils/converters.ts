@@ -2,7 +2,7 @@ export class Converters {
 	static camelCaseKeysToUnderscore(obj: any): any {
 		if (typeof obj != "object") return obj;
 		let newName;
-		for (var oldName in obj) {
+		for (const oldName in obj) {
 			newName = oldName.replace(/([A-Z])/g, function ($1) {
 				return "_" + $1.toLowerCase();
 			});

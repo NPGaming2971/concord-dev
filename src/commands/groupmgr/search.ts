@@ -1,8 +1,18 @@
-import { ApplicationCommandOptionType, AutocompleteInteraction, ChatInputCommandInteraction, Locale } from 'discord.js';
+import {
+	ApplicationCommandOptionType,
+	AutocompleteInteraction,
+	ChatInputCommandInteraction,
+	ComponentType,
+	Locale,
+	type EmbedBuilder
+} from 'discord.js';
 import { Command, GroupEmbedModal } from '../../structures/';
 import Fuse from 'fuse.js';
 import { Pagination } from '../../utils/Pagination';
-import type { EmbedBuilder } from '@discordjs/builders';
+import { Constants } from '../../typings/constants';
+import { sampleSize } from 'lodash';
+import { Util } from '../../utils';
+
 export class CreateCommand extends Command {
 	constructor() {
 		super({
@@ -14,6 +24,13 @@ export class CreateCommand extends Command {
 						name: 'query',
 						description: 'The tag of the group to search.',
 						type: ApplicationCommandOptionType.String
+					},
+					{
+						name: 'limit',
+						description: 'The number of groups to query [Default: 50]',
+						type: ApplicationCommandOptionType.Number,
+						maxValue: 100,
+						minValue: 1
 					},
 					{
 						name: 'locale',
@@ -55,21 +72,21 @@ export class CreateCommand extends Command {
 						type: ApplicationCommandOptionType.String
 					}
 				]
-			},
+			}
 		});
 	}
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
 		await interaction.deferReply();
 		const { options } = interaction;
-		this.data.options?.map((i) => i.name);
 
 		const queryingOptions = {
 			query: options.getString('query'),
 			ownerId: options.getString('owner'),
 			locale: options.getString('locale'),
 			status: options.getString('status'),
-			range: options.getString('range') ?? '0-25'
+			range: options.getString('range') ?? '0-25',
+			limit: options.getNumber('limit') ?? 50
 		};
 
 		const { query, locale, status, range } = queryingOptions;
@@ -83,6 +100,7 @@ export class CreateCommand extends Command {
 		if (locale) {
 			initial = initial.filter((e) => e.locale === locale);
 		}
+
 		initial = initial.filter((e) => {
 			const number = e.channels.cache.size;
 			const arr = range.split('-').map((i) => Number(i));
@@ -103,22 +121,31 @@ export class CreateCommand extends Command {
 			const results = fuse.search(query);
 
 			initial = results.map((i) => i.item);
+		} else {
+			initial = sampleSize(initial, queryingOptions.limit);
 		}
 
 		if (!initial.length) {
 			return interaction.editReply('No result was found. Did you apply too many filters?');
 		}
 		const pagination = new Pagination<EmbedBuilder>({
-			pages: initial.map((i) =>
-				new GroupEmbedModal(i).showMultiple('Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag')
-			),
+			pages: initial.map((i) => new GroupEmbedModal(i).showMultiple('Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag')),
 			splitInto: 3
 		});
 
-		interaction.editReply({
+		const message = await interaction.editReply({
 			content: `${initial.length} results found.`,
-			embeds: pagination.getPage(0)
+			embeds: pagination.getPage(0),
+			components: [Util.pagiationRow]
 		});
+
+		const collector = message.createMessageComponentCollector({
+			filter: Constants.BaseFilter(interaction),
+			componentType: ComponentType.Button,
+			idle: 15000
+		});
+
+		collector.on('collect', (i) => Util.handlePagination(i, pagination));
 
 		return;
 	}
@@ -134,8 +161,6 @@ export class CreateCommand extends Command {
 				});
 
 				const results = fuse.search(focusedValue.value.toString());
-
-				console.log(results.length);
 
 				const choices = results
 					.map((i) => (i.score! < 0.01 ? { ...i.item, key: `⭐ ${i.item.key}` } : i.item))

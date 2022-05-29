@@ -1,7 +1,9 @@
-import { from, Result } from '@sapphire/result';
-import { TextInputStyle } from 'discord.js';
+import { from, fromAsync, Result } from '@sapphire/result';
+import { Awaitable, TextInputStyle } from 'discord.js';
 import { GroupPermissionsBitfield } from '../src/structures';
 import type { GroupPermissionsString } from '../src/typings';
+import { Util } from '../src/utils';
+const { isImage } = Util;
 
 const DefaultValidate = (): Result<void, string> => from(() => {});
 
@@ -24,8 +26,8 @@ export class Setting {
 
 		if (this.isString() && data.type === SettingType.String) {
 			this.validate = data.validate;
-			
-			this.style = data.style
+
+			this.style = data.style;
 
 			this.restraints.lengthRange = data.restraints?.lengthRange ?? [null, null];
 		}
@@ -86,8 +88,8 @@ interface StringSetting extends BaseSetting {
 		lengthRange?: [number | null, number | null];
 	};
 	default: string | null;
-	validate: (value: string) => Result<void, string>;
-	style?: TextInputStyle
+	validate: (value: string) => Awaitable<Result<void, string>>;
+	style?: TextInputStyle;
 }
 
 enum SettingType {
@@ -134,7 +136,7 @@ export enum CategoryType {
 
 const data: SettingData[] = [
 	{
-		name: 'Group Name',
+		name: 'Name',
 		description: 'Your group name.',
 		type: SettingType.String,
 		validate: (value: string) => {
@@ -150,10 +152,10 @@ const data: SettingData[] = [
 		},
 		restraints: {
 			lengthRange: [2, 32]
-		},
+		}
 	},
 	{
-		name: 'Group Status',
+		name: 'Status',
 		description: 'Control this group accessibility to others.',
 		type: SettingType.Choices,
 		path: 'status',
@@ -184,7 +186,7 @@ const data: SettingData[] = [
 		help: { category: CategoryType.Security }
 	},
 	{
-		name: 'Group Description',
+		name: 'Description',
 		path: 'appearances.description',
 		help: {
 			category: CategoryType.Appearances
@@ -197,7 +199,28 @@ const data: SettingData[] = [
 		},
 		validate: DefaultValidate,
 		style: TextInputStyle.Paragraph
+	}, {
+		name: 'Avatar',
+		path: 'appearances.avatar',
+		help: {
+			category: CategoryType.Appearances
+		},
+		description: 'Set your group avatar!',
+		type: SettingType.String,
+		default: null,
+		validate: (newValue: string) => {
+			return fromAsync<void, string>(validateImage(newValue))
+		}
 	}
 ];
+
+async function validateImage(testValue: string) {
+	const URLValidationRegex = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g;
+	if (!URLValidationRegex.test(testValue)) {
+		throw new Error('Not a valid URL.');
+	} else if (!(await isImage(testValue))) {
+		throw new Error('URL does not point to a valid image resource.');
+	} else return;
+}
 
 export default data.map((i) => new Setting(i));

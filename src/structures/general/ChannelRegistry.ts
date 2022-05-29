@@ -1,24 +1,19 @@
-import { Awaitable, Base, Client, MessageResolvable, WebhookClient, WebhookMessageOptions } from 'discord.js';
+import { Awaitable, Base, Client, If, MessageResolvable, WebhookClient, WebhookMessageOptions } from 'discord.js';
 import type { APIMessage } from 'discord.js/node_modules/discord-api-types/v10';
 import type { APIChannelRegistry, RegisterableChannel } from '../../typings';
 
-import { Util } from '../../utils/utils';
+import { Util } from '../../utils/';
 import { ConcordError } from '../errors/ConcordError';
-import type { Group } from './Group';
 
 export interface ChannelRegistry<Registered extends boolean = boolean> {
 	channelId: string;
-	webhook: string | null;
+	webhook: If<Registered, string>
 	groupId: string | null;
-	group: Group | null;
 }
-
 export class ChannelRegistry extends Base implements ChannelRegistry {
-	constructor(client: Client, data: APIChannelRegistry, group: Group | null = null) {
+	constructor(client: Client, rawGroupData: APIChannelRegistry) {
 		super(client);
-		this.group = group;
-
-		this._patch(data);
+		this._patch(rawGroupData);
 	}
 
 	public _patch(data: APIChannelRegistry) {
@@ -27,6 +22,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		}
 
 		if ('webhookurl' in data) {
+			//@ts-expect-error
 			this.webhook = data.webhookurl;
 		}
 
@@ -37,17 +33,21 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		return this;
 	}
 
+	public get group() {
+		return this.groupId ? this.client.groups.fetch(this.groupId)! : null;
+	}
+
 	public get channel() {
 		return this.client.channels.cache.get(this.channelId) as RegisterableChannel;
 	}
 
-	private createOneTimeClient(func: (client: WebhookClient) => Awaitable<any>) {
-		const client = new WebhookClient({url: this.webhook!})
+	private createTempClient(func: (client: WebhookClient) => Awaitable<any>) {
+		const client = new WebhookClient({ url: this.webhook! });
 
-		const action = func(client)
+		const action = func(client);
 
-		client.destroy()
-		return action
+		client.destroy();
+		return action;
 	}
 
 	private validateActionConditions() {
@@ -56,20 +56,20 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 
 	public async send(options: WebhookMessageOptions | string): Promise<APIMessage> {
 		this.validateActionConditions();
-
-		return this.createOneTimeClient((client) => client.send(options))
+ 
+		return this.createTempClient((client) => client.send(options));
 	}
 
 	public async editMessage(target: MessageResolvable, options: WebhookMessageOptions | string): Promise<APIMessage> {
 		this.validateActionConditions();
 
-		return this.createOneTimeClient((client) => client.editMessage(target, options));
+		return this.createTempClient((client) => client.editMessage(target, options));
 	}
 
 	public async deleteMessage(target: MessageResolvable): Promise<void> {
 		this.validateActionConditions();
 
-		return this.createOneTimeClient((client) => client.deleteMessage(target));
+		return this.createTempClient((client) => client.deleteMessage(target));
 	}
 
 	public fetchWebhook() {
@@ -80,7 +80,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		return this.client.fetchWebhook(id, token);
 	}
 
-	public isRegistered() {
+	public isRegistered(): this is ChannelRegistry<true> {
 		return !!this.webhook;
 	}
 
@@ -98,7 +98,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	public delete() {
-		this.client.registry.delete(this.channel.id);
+		this.client.registry.delete(this.channelId);
 	}
 }
 

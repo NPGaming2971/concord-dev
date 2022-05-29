@@ -1,12 +1,14 @@
 import type { Database } from 'better-sqlite3';
-import { Base, Client, LocaleString, Message } from 'discord.js';
-import { GroupMessageManager } from '../../manager/GroupMessageManager';
+import { Base, Client, Formatters, LocaleString, Message, WebhookMessageOptions } from 'discord.js';
+import { GroupMessageManager, GroupMessageSendOptions } from '../../manager/GroupMessageManager';
 import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
 import type { APIGroup } from '../../typings';
 import type { GroupStatusType } from '../../typings/enums';
 import { DatabaseUtil } from '../../utils/DatabaseUtil';
-import { Util } from '../../utils/utils';
+import { Util } from '../../utils'
 const { fallback } = Util;
+import { cloneDeep } from 'lodash';
+
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
 		super(client);
@@ -18,23 +20,25 @@ export class Group extends Base implements Group {
 		this._patch(data);
 	}
 
-	public getAvatarURL() {
+	private firstRun = false
+
+	public displayAvatarURL() {
 		return this.avatar ?? this.client.rest.cdn.defaultAvatar(0);
 	}
 
-	public getDescription() {
+	public displayDescription() {
 		return this.description ?? 'No description provided.';
 	}
 
-	public getBannerURL() {
+	public displayBannerURL() {
 		return this.banner;
 	}
 
-	public getName() {
+	public displayName() {
 		return this.name ?? 'Unnamed';
 	}
 
-	public getLocale() {
+	public displayLocale() {
 		try {
 			return new Intl.DisplayNames('en', { type: 'region', fallback: 'none' }).of(this.locale!.toUpperCase());
 		} catch {
@@ -45,8 +49,8 @@ export class Group extends Base implements Group {
 	public async fetchOwner() {
 		return this.client.users.fetch(this.ownerId);
 	}
-	public async send(message: Message) {
-		return this.messages.create(message);
+	public async send(message: Message | WebhookMessageOptions, options: GroupMessageSendOptions = { exclude: [] }) {
+		return this.messages.create(message, options);
 	}
 
 	private _patch(data: Partial<APIGroup>) {
@@ -59,7 +63,6 @@ export class Group extends Base implements Group {
 		}
 
 		if (data.createdTimestamp) {
-			this.createdAt = new Date(data.createdTimestamp);
 			this.createdTimestamp = data.createdTimestamp;
 		}
 
@@ -76,10 +79,15 @@ export class Group extends Base implements Group {
 			this.status = data.status;
 		}
 
-		this.channels.cache.clear();
-		const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
-		for (const registry of registries) {
-			this.channels._add(registry, true, { id: registry.id, extras: [this] });
+		if (!this.firstRun) {
+
+			this.firstRun = false
+
+			this.channels.cache.clear();
+			const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
+			for (const registry of registries) {
+				this.channels._add(registry, true, { id: registry.id, extras: [] });
+			}
 		}
 
 		if (data.appearances) {
@@ -92,26 +100,35 @@ export class Group extends Base implements Group {
 			if ('description' in data.appearances) this.description = data.appearances.description;
 		}
 	}
+	public get createdAt() {
+		return new Date(this.createdTimestamp);
+	}
 
 	public override toJSON(): APIGroup {
 		return this.raw;
 	}
 
-	public edit(data: Partial<APIGroup>) {
+	public override toString() {
+		return Formatters.inlineCode(`@` + this.tag);
+	}
 
-		const apiGroup = Util.flatten(this.toJSON())
-		const updateData = Util.flatten(data)
+	public edit(data: Partial<APIGroup>) {
+		const apiGroup = Util.flatten(this.toJSON());
+		const updateData = Util.flatten(data);
 
 		for (const [key, value] of Object.entries(updateData)) {
-			const preData = apiGroup[key]
-			apiGroup[key] = fallback(value, preData)
+			const preData = apiGroup[key];
+			apiGroup[key] = fallback(value, preData);
 		}
 
 		//TODO
-		const groupData = Util.unflatten(Object.assign(apiGroup, {settings: {}}))
+		const preGroup = cloneDeep(this);
+		const groupData = Util.unflatten(Object.assign(apiGroup, { settings: {} })) as APIGroup;
 
 		this.client.statements.groupUpdate.run(DatabaseUtil.makeDatabaseCompatible(groupData));
 		this._patch(groupData);
+
+		this.client.emit('groupUpdate', preGroup, this);
 	}
 }
 

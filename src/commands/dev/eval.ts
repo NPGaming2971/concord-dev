@@ -13,6 +13,7 @@ import { inspect } from "node:util";
 import fetch from "node-fetch";
 import { Constants } from "../../typings/constants";
 import { Time } from "../../typings/enums";
+
 export class EvalCommand extends Command {
 	constructor() {
 		super({
@@ -85,6 +86,7 @@ export class EvalCommand extends Command {
 				const executionEnd = new Date().getTime();
 				const returnType = typeof evaled;
 				if (typeof evaled !== "string") evaled = inspect(evaled);
+
 				if (clean(evaled).length >= 3984) {
 					fetch("https://www.toptal.com/developers/hastebin/documents", {
 						method: "POST",

@@ -1,8 +1,8 @@
 import type { Database } from 'better-sqlite3';
-import { CachedManager, Client, SnowflakeUtil } from 'discord.js';
+import { BaseFetchOptions, CachedManager, Client, SnowflakeUtil } from 'discord.js';
 import { Group, ChannelRegistry } from '../structures/';
 import { ConcordError } from '../structures/';
-import type { GroupCreateOptions, GroupResolvable } from '../typings';
+import type { APIGroup, GroupCreateOptions, GroupResolvable } from '../typings';
 import { GroupStatusType } from '../typings/enums';
 import { DatabaseUtil } from '../utils/DatabaseUtil';
 
@@ -17,12 +17,25 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 		this._populateCache();
 	}
 
+	public fetch(id: string, { cache = true, force = false }: BaseFetchOptions = {}) {
+		if (!force) {
+			const existing = this.cache.get(id);
+			if (existing) return existing;
+		}
+
+		const { fetchGroupById } = this.client.statements;
+
+		const data: APIGroup | undefined = fetchGroupById.get(id);
+
+		if (!data) return null;
+		return this._add(data, cache, { id: id, extras: [] });
+	}
+
 	//TODO: Validate locale
 	public create(tag: string, { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' }: GroupCreateOptions) {
 		const ownerId = this.client.users.resolveId(owner);
 
-		if (!ownerId)
-			throw new ConcordError('INVALID_OWNER');
+		if (!ownerId) throw new ConcordError('INVALID_OWNER');
 
 		const data = {
 			tag,

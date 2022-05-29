@@ -1,31 +1,41 @@
+import { chunk } from 'lodash';
+import { Util } from './Util';
+
 export interface Pagination<T> {
 	pages: T[][];
-	currentPage: number;
+	currentIndex: number;
 }
 
-type PaginationOptions = {
+type PaginationOptions<T> = {
 	splitInto?: number;
-	pages?: any[];
+	pages?: T[];
 	startingPage?: number;
 };
 
 export class Pagination<T> implements Pagination<T> {
-	constructor(options: PaginationOptions = {}) {
+	constructor(options: PaginationOptions<T>) {
 		const { splitInto } = options;
 
 		this.pages = [];
-		this.currentPage = options.startingPage ?? 0;
+		this.currentIndex = options.startingPage ?? 0;
 
 		this.renderChunks(options.pages, splitInto);
+		Util.updateIndex(this)
+		Util.renderRow(this)
 	}
 
+	public get maxPagesIndex() {
+		return this.pages.length - 1;
+	}
+	
 	public previousPage() {
-		this.currentPage--;
+		this.currentIndex--;
+		if (this.currentIndex < 0) this.currentIndex = this.maxPagesIndex;
 		return this.getCurrentPage();
 	}
 
 	public firstPage() {
-		this.currentPage = 0;
+		this.currentIndex = 0;
 		return this.getCurrentPage();
 	}
 
@@ -33,22 +43,31 @@ export class Pagination<T> implements Pagination<T> {
 		return this.pages[page];
 	}
 
-	public nextPage() {
-		this.currentPage++;
+	public getIndex() {
+		return [this.currentIndex, this.maxPagesIndex].map((i) => i + 1);
+	}
+
+	public setPage(page: number) {
+		this.currentIndex = page;
+	}
+
+	public lastPage() {
+		this.currentIndex = this.maxPagesIndex;
 		return this.getCurrentPage();
 	}
 
-	private getCurrentPage() {
-		return this.getPage(this.currentPage);
+	public nextPage() {
+		this.currentIndex++;
+		if (this.currentIndex > this.maxPagesIndex) this.currentIndex = 0;
+		return this.getCurrentPage();
+	}
+
+	public getCurrentPage() {
+		return this.getPage(this.currentIndex);
 	}
 
 	private renderChunks(array: T[] = [], splitInto: number = 1) {
-
 		if (!splitInto) throw new Error('Can not have a page size of zero.');
-
-		for (let i = 0; i < array.length; i += splitInto) {
-			const chunk = array.slice(i, i + splitInto);
-			this.pages.push(chunk);
-		}
+		this.pages = chunk(array, splitInto);
 	}
 }

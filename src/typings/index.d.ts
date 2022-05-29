@@ -33,7 +33,7 @@ export interface APIGroupMessage {
 	url: string;
 	message: APIMessage;
 	group: Group;
-	parentId: [string, string]
+	parentId: [string, string] | [null, null]
 	registry: ChannelRegistry
 }
 

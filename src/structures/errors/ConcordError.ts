@@ -1,6 +1,6 @@
 'use strict';
 
-import { Formatters } from "discord.js";
+import { Formatters } from 'discord.js';
 
 // Heavily inspired by node's `internal/errors` module
 

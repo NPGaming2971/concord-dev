@@ -1,7 +1,7 @@
 import { ChannelType, Client, Formatters, Interaction, MessagePayload, PermissionResolvable } from 'discord.js';
 import { Listener, ResponseFormatters } from '../structures/';
 import { Constants } from '../typings/constants';
-import { Converters } from '../utils/converters';
+import { Converters } from '../utils/Converters';
 import { fromAsync } from '@sapphire/result';
 import { InteractionResponseType, Routes } from 'discord-api-types/v10';
 export class InteractionCreateEvent extends Listener<'interactionCreate'> {
