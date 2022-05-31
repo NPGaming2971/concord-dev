@@ -86,6 +86,7 @@ export class GroupMessageManager extends CachedManager<string, GroupMessage, Gro
 
 	public _addMultiple(...messages: APIGroupMessage[]) {
 		for (const message of messages) {
+			//@ts-expect-error
 			this._add(message, true, { id: message.message.id, extras: [message.group] });
 		}
 	}

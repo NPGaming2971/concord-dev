@@ -31,6 +31,7 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 			return null;
 		}
 
+		//@ts-expect-error
 		return this._add(data, cache, { id: id, extras: [] });
 	}
 
@@ -65,6 +66,7 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		if (this.cache.has(id)) {
 			return this.cache.get(id)!._patch(data);
 		} else {
+			//@ts-expect-error
 			return this._add(data, true, { id: id, extras: [] });
 		}
 	}

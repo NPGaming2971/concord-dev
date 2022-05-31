@@ -28,6 +28,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 		const data: APIGroup | undefined = fetchGroupById.get(id);
 
 		if (!data) return null;
+		//@ts-expect-error
 		return this._add(data, cache, { id: id, extras: [] });
 	}
 
@@ -66,6 +67,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 
 		this.client.statements.groupCreate.run(DatabaseUtil.makeDatabaseCompatible(data));
 
+		//@ts-expect-error
 		this.client.emit('groupCreate', this._add(data, true, { id: data.id, extras: [this.database] }));
 		return this.cache.get(data.id)!;
 	}
@@ -96,6 +98,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 	private _populateCache() {
 		this.client.statements.fetchAllGroups.all().map((e) => {
 			const parsed = DatabaseUtil.parseRawData(e);
+			//@ts-expect-error
 			this._add(parsed, true, { id: e.id, extras: [this.database] });
 		});
 	}

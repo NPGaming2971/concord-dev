@@ -89,6 +89,7 @@ export class Group extends Base implements Group {
 			this.channels.cache.clear();
 			const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
 			for (const registry of registries) {
+				//@ts-expect-error
 				this.channels._add(registry, true, { id: registry.id, extras: [] });
 			}
 		}
