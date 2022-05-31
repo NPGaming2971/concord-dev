@@ -58,7 +58,9 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			id: SnowflakeUtil.generate({ timestamp: Date.now() }).toString(),
 			status: GroupStatusType.Public,
 			bans: [],
-			settings: {},
+			settings: {
+				maxCharacterLimit: 1024
+			},
 			createdTimestamp: Date.now()
 		};
 

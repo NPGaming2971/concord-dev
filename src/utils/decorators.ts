@@ -17,14 +17,24 @@ export function Enumerable(value: boolean) {
 	};
 }
 
-export function ApplyToClass<T>(targetClass: Constructable<T>): MethodDecorator {
+type ApplyToClassOptions = {
+	makeStatic?: boolean;
+	isGetter?: boolean;
+};
+
+export function ApplyToClass<T>(targetClass: Constructable<T>, options: ApplyToClassOptions = {}): MethodDecorator {
+	const { makeStatic = false, isGetter = false } = options;
+
 	return (target: object, key: string | symbol) => {
 		const functionToApply = Reflect.get(target, key);
-		Object.defineProperty(targetClass.prototype, key, {
+
+		const defineTarget = makeStatic ? targetClass : targetClass.prototype;
+
+		Object.defineProperty(defineTarget, key, {
 			get() {
-				return functionToApply.bind(this as NonNullObject);
+				return isGetter ? functionToApply.call(target, this) : functionToApply.bind(target, this);
 			},
-			enumerable: false,			
+			enumerable: false
 		});
 	};
 }

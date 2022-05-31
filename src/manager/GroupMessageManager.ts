@@ -24,26 +24,34 @@ export class GroupMessageManager extends CachedManager<string, GroupMessage, Gro
 		if (message instanceof Message) {
 			return super.resolveId(message.id);
 		}
-		return super.resolveId(message) as string;
+		return super.resolveId(message);
+	}
+
+	public override resolve(message: GroupMessage): GroupMessage
+	public override resolve(message: GroupMessageResolvable): GroupMessage | null
+	public override resolve(message: GroupMessage | GroupMessageResolvable) {
+		if (message instanceof Message) {
+			return super.resolve(message);
+		}
+		return super.resolve(message);
 	}
 
 	public getRefOf(message: GroupMessageResolvable) {
 		const id = this.resolveId(message);
 		return this.cache.filter((msg) => {
-			
 			const [, parentId] = msg.parentId;
 
 			return id === parentId;
 		});
 	}
 	public getParentOf(target: GroupMessageResolvable) {
-		
 		const message = this.resolve(target);
+
 		if (!message) return undefined;
 
 		const [, parentId] = message.parentId;
 
-		if (!parentId) return undefined
+		if (!parentId) return undefined;
 
 		return this.cache.get(parentId);
 	}

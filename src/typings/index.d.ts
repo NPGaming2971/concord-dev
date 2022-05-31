@@ -67,7 +67,9 @@ export interface APIGroup {
 	id: string;
 	tag: string;
 	bans: string[];
-	settings: {};
+	settings: {
+		maxCharacterLimit: number
+	};
 	createdTimestamp: number;
 }
 

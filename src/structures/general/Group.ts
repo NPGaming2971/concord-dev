@@ -5,7 +5,7 @@ import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
 import type { APIGroup } from '../../typings';
 import type { GroupStatusType } from '../../typings/enums';
 import { DatabaseUtil } from '../../utils/DatabaseUtil';
-import { Util } from '../../utils'
+import { Util } from '../../utils';
 const { fallback } = Util;
 import { cloneDeep } from 'lodash';
 
@@ -20,7 +20,7 @@ export class Group extends Base implements Group {
 		this._patch(data);
 	}
 
-	private firstRun = false
+	private firstRun = false;
 
 	public displayAvatarURL() {
 		return this.avatar ?? this.client.rest.cdn.defaultAvatar(0);
@@ -79,9 +79,12 @@ export class Group extends Base implements Group {
 			this.status = data.status;
 		}
 
-		if (!this.firstRun) {
+		if (data.settings) {
+			this.settings = data.settings
+		}
 
-			this.firstRun = false
+		if (!this.firstRun) {
+			this.firstRun = false;
 
 			this.channels.cache.clear();
 			const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
@@ -123,7 +126,7 @@ export class Group extends Base implements Group {
 
 		//TODO
 		const preGroup = cloneDeep(this);
-		const groupData = Util.unflatten(Object.assign(apiGroup, { settings: {} })) as APIGroup;
+		const groupData = Util.unflatten(Object.assign(apiGroup, { settings: { maxCharacterLimit: 1024 } })) as APIGroup;
 
 		this.client.statements.groupUpdate.run(DatabaseUtil.makeDatabaseCompatible(groupData));
 		this._patch(groupData);
@@ -150,4 +153,5 @@ export interface Group {
 	messages: GroupMessageManager;
 	status: GroupStatusType;
 	database: Database;
+	settings: APIGroup['settings']
 }

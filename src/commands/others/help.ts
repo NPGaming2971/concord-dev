@@ -1,5 +1,5 @@
-import { EmbedBuilder } from "@discordjs/builders";
 import {
+	EmbedBuilder,
 	ApplicationCommandOptionType,
 	ChatInputCommandInteraction,
 	AutocompleteInteraction,

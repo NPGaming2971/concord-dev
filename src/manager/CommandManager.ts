@@ -97,12 +97,13 @@ export class CommandManager extends BaseManager {
 			targetGuildId.map((id) =>
 				rest
 					.put(Routes.applicationGuildCommands(clientId, id), { body: commandData })
-					.then(() =>
+					.then(() => {
 						this.client.logger.info(
 							this.constructor.name,
-							`Successfully deployed ${commandData.length} local command(s) on guild <${id}>.`
-						)
-					)
+							`Successfully deployed ${commandData.length} local command(s) on guild ${id}.`
+						);
+					})
+
 					.catch((err) => {
 						this.client.logger.error(this.constructor.name, err);
 						process.exit(0);
@@ -113,7 +114,9 @@ export class CommandManager extends BaseManager {
 			const commandData = data.global.flat();
 
 			rest.put(Routes.applicationCommands(clientId), { body: commandData })
-				.then(() => this.client.logger.info(this.constructor.name, `Successfully deployed ${commandData.length} global command(s).`))
+				.then(() => {
+					this.client.logger.info(this.constructor.name, `Successfully deployed ${commandData.length} global command(s).`);
+				})
 				.catch((err) => {
 					this.client.logger.error(this.constructor.name, err);
 					process.exit(0);

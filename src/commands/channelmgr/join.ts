@@ -24,19 +24,18 @@ export class JoinCommand extends Command {
 			},
 			preconditions: {
 				canRunIn: [ChannelType.GuildText, ChannelType.GuildNews],
-				requiredUserPermissions: ['ManageChannels'],
-				
-			},
+				requiredUserPermissions: ['ManageChannels']
+			}
 		});
 	}
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>): Promise<any> {
-		const channel = interaction.options.getChannel('channel', true) ?? interaction.channel
+		const channel = interaction.options.getChannel('channel')! ?? interaction.channel;
 
-		if (!channel.isRegisterable()) return
+		if (!channel.isRegisterable()) return;
 
 		const targetGroup = interaction.options.getString('target-group', true);
 		await interaction.deferReply();
-		const group = interaction.client.groups.cache.find((i) => i.tag === targetGroup);
+		const group = interaction.client.groups.cache.find((i) => i.tag === targetGroup || i.id === targetGroup);
 
 		if (!group) return interaction.editReply('No such group');
 
@@ -48,7 +47,7 @@ export class JoinCommand extends Command {
 
 		if (myGroup?.tag === group.tag) return interaction.editReply('You are already in this group.');
 
-		let response = myGroup ? `Are you sure you want to leave ${myGroup} and join ${group}?` : 'Are you sure want to join this group?';
+		let response = `Are you sure you want to ${myGroup ? `leave ${myGroup} and join ${group}` : 'join this group'}?`
 
 		const defaultOptions = {
 			embeds: [],

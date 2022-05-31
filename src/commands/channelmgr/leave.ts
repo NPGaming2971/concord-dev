@@ -32,7 +32,7 @@ export class LeaveCommand extends Command {
 
 		if (!targetGroup) return interaction.editReply('You aint in any group.');
 
-		targetGroup?.channels.kick(channel);
-		interaction.editReply(`Left ${targetGroup?.tag}`);
+		targetGroup.channels.kick(channel);
+		interaction.editReply(`Left ${targetGroup}`);
 	}
 }

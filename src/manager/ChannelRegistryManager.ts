@@ -5,12 +5,14 @@ import type { APIChannelRegistry, RegisterableChannel, RegistryCreateOptions } f
 // Reduce database workload. Block unregistered channel.
 const Blocker = new Set<string>();
 
-export class ChannelRegistryManager extends CachedManager<string, ChannelRegistry, ChannelRegistry> {
+type ChannelRegistryResolvable = string | RegisterableChannel;
+
+export class ChannelRegistryManager extends CachedManager<string, ChannelRegistry, ChannelRegistryResolvable> {
 	constructor(client: Client) {
 		super(client, ChannelRegistry);
 	}
 
-	fetch(channel: ChannelResolvable, { cache = true, force = false }: BaseFetchOptions = {}) {
+	public fetch(channel: ChannelResolvable, { cache = true, force = false }: BaseFetchOptions = {}) {
 		const id = this.client.channels.resolveId(channel);
 
 		if (Blocker.has(id)) return null;

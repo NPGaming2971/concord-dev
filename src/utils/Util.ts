@@ -98,7 +98,7 @@ export class Util {
 		const matches = text.match(regex)?.map((i) => [i, i.replace('](', ']\u200B(')]) ?? [];
 
 		for (const [key, value] of matches) {
-			text = text.replace(key, value);
+			text = text.replaceAll(key, value);
 		}
 
 		return text;

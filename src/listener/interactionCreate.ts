@@ -19,6 +19,7 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 			});
 			return;
 		}
+
 		if (interaction.isCommand()) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);
 			if (!command) return interaction.reply('Unknown command.');
@@ -55,7 +56,7 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 				}
 
 				if (requiredClientPermissions) {
-					if (!interaction.guild.me?.permissions.has(requiredClientPermissions))
+					if (!interaction.guild.members.me?.permissions.has(requiredClientPermissions))
 						return interaction.reply(
 							prepareError(`MISSING_CLIENT_PERMISSIONS`, {
 								permissions: formatPermissions(requiredClientPermissions)
@@ -73,7 +74,6 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 					}
 				}
 			}
-
 			if (interaction.isChatInputCommand()) {
 				if (command.supportChatInput()) {
 					fromAsync(command.chatInputRun.bind(command, interaction));
@@ -83,17 +83,17 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 				if (!command.supportContextMenu()) return;
 
 				if (interaction.isMessageContextMenuCommand() && command.supportMessageContextMenu())
-					fromAsync(command.messageContextMenuRun.bind(command, interaction));
+					fromAsync(command.messageContextMenuRun.bind(command, interaction)).catch(console.error);
 
 				if (interaction.isUserContextMenuCommand() && command.supportUserContextMenu())
-					fromAsync(command.userContextMenuRun.bind(command, interaction));
+					fromAsync(command.userContextMenuRun.bind(command, interaction)).catch(console.error);
 			}
 		} else if (interaction.isAutocomplete()) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);
 			if (!command) return interaction.respond([{ name: 'Unknown command.', value: 'unknown' }]);
 
 			if (command.supportAutocomplete()) {
-				fromAsync(command.autocompleteRun.bind(command, interaction));
+				fromAsync(command.autocompleteRun.bind(command, interaction)).catch(console.error);
 			}
 		}
 	}

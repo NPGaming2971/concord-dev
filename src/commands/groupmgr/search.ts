@@ -120,7 +120,7 @@ export class CreateCommand extends Command {
 			});
 			const results = fuse.search(query);
 
-			initial = results.map((i) => i.item);
+			initial = results.map(i => i.item);
 		} else {
 			initial = sampleSize(initial, queryingOptions.limit);
 		}
@@ -130,7 +130,7 @@ export class CreateCommand extends Command {
 		}
 		const pagination = new Pagination<EmbedBuilder>({
 			pages: initial.map((i) => new GroupEmbedModal(i).showMultiple('Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag')),
-			splitInto: 3
+			groupBy: 3
 		});
 
 		const message = await interaction.editReply({

@@ -20,7 +20,6 @@ export class MessageCreateEvent extends Listener<'messageUpdate'> {
 			newMessage.author.id === newMessage.client.user?.id
 		)
 			return;
-
 		const registry = newMessage.client.registry.fetch(newMessage.channelId);
 
 		if (!registry || !registry.groupId || !registry.webhook) return;

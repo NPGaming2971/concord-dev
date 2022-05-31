@@ -8,6 +8,7 @@ export class ReadyEvent extends Listener<"ready"> {
 	}
 	public async run(client: ConcordClient) {
 		const { tag } = client.user;
+
 		client.logger.info(this.constructor.name, `Logged in as ${tag}.`);
 	}
 }

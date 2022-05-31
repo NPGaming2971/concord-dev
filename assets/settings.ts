@@ -67,7 +67,7 @@ export interface Setting extends BaseSetting {}
 interface ChoicesSetting extends BaseSetting {
 	type: SettingType.Choices;
 	options: ChoiceOption[];
-	default: string | null;
+	default: string | number | null;
 }
 
 interface BooleanSetting extends BaseSetting {
@@ -78,7 +78,7 @@ interface BooleanSetting extends BaseSetting {
 interface ChoiceOption {
 	name: string;
 	description?: string;
-	value: string;
+	value: string | number;
 }
 
 interface StringSetting extends BaseSetting {
@@ -104,7 +104,7 @@ interface BaseSetting {
 	/**
 	 * Default value for this settings.
 	 */
-	default: string | boolean | null;
+	default: string | number | boolean | null;
 	/**
 	 * Group property access path.
 	 */
@@ -186,6 +186,17 @@ const data: SettingData[] = [
 		help: { category: CategoryType.Security }
 	},
 	{
+		name: 'Max Character Limit',
+		path: 'settings.maxCharacterLimit',
+		default: 'dynamic',
+		type: SettingType.Choices,
+		description: 'The character limit of a message sent in your group.',
+		options: [],
+		help: {
+			category: CategoryType.Appearances
+		}
+	},
+	{
 		name: 'Description',
 		path: 'appearances.description',
 		help: {
@@ -199,17 +210,18 @@ const data: SettingData[] = [
 		},
 		validate: DefaultValidate,
 		style: TextInputStyle.Paragraph
-	}, {
+	},
+	{
 		name: 'Avatar',
 		path: 'appearances.avatar',
 		help: {
 			category: CategoryType.Appearances
 		},
-		description: 'Set your group avatar!',
+		description: 'Set your group avatar.',
 		type: SettingType.String,
 		default: null,
 		validate: (newValue: string) => {
-			return fromAsync<void, string>(validateImage(newValue))
+			return fromAsync<void, string>(validateImage(newValue));
 		}
 	}
 ];

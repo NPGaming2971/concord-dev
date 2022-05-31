@@ -6,19 +6,20 @@ import {
 	ChatInputCommandInteraction,
 	EmbedBuilder,
 	ActionRowBuilder,
-	SelectMenuBuilder,
 	Formatters,
 	MessageComponentInteraction,
 	ModalSubmitInteraction,
 	TextInputStyle,
 	ModalBuilder,
-	TextInputBuilder
+	TextInputBuilder,
 } from 'discord.js';
+
 import { Command, Group } from '../../structures/';
 import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
 import { Util } from '../../utils/';
 import { isOk } from '@sapphire/result';
+import { SelectMenuBuilder } from '@discordjs/builders';
 export class SettingsCommand extends Command {
 	constructor() {
 		super({
@@ -136,7 +137,7 @@ export class SettingsCommand extends Command {
 		});
 
 		type UpdateGroupOption = {
-			newValue: string | boolean | null;
+			newValue: string | number | boolean | null;
 			option: Setting;
 			group: Group;
 			interaction: any;
@@ -148,7 +149,7 @@ export class SettingsCommand extends Command {
 			interaction[interaction.replied ? 'editReply' : 'update']({
 				embeds: [this.appendCurrentValue(option, groupData)]
 			});
-		}
+		};
 	}
 
 	public override autocompleteRun(interaction: AutocompleteInteraction) {
@@ -188,16 +189,16 @@ export class SettingsCommand extends Command {
 
 	private appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }) {
 		const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
-	
+
 		const data = Util.escapeMaskedLink(Util.escapeQuote(String(flattenedGroup[option.path])));
-	
+
 		return this.parseOption(option, flattenedGroup.tag).addFields({
 			name: 'Current value',
 			value: isParagraph ? data : Formatters.inlineCode(data),
 			inline: !isParagraph
 		});
 	}
-	
+
 	private parseOption(option: Setting, groupTag: string) {
 		const embed = new EmbedBuilder()
 			.setAuthor({ name: `in: ${option.help?.category ?? 'Uncategorized'}` })
@@ -211,46 +212,48 @@ export class SettingsCommand extends Command {
 				value: Formatters.inlineCode(String(option.default)),
 				inline: true
 			});
-	
+
 		if (option.isChoices()) {
 			embed.spliceFields(0, 0, {
 				name: 'Available options',
 				value: option.options
 					.map(
 						(e) =>
-							`> **${e.name}** (${Formatters.inlineCode(e.value)})\n${e.description?.length ? e.description : 'No description provided.'}`
+							`> **${e.name}** (${Formatters.inlineCode(String(e.value))})\n${
+								e.description?.length ? e.description : 'No description provided.'
+							}`
 					)
 					.join(`\n\n`)
 			});
 		}
-	
+
 		return embed;
 	}
-	
+
 	private renderComponents(setting: Setting) {
 		const resetButton = new ButtonBuilder().setCustomId('settings/resetToDefault').setLabel('Reset to default').setStyle(ButtonStyle.Secondary);
-	
+
 		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents(resetButton);
 		const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
-	
+
 		if (setting.isString()) {
 			const setNewValueButton = new ButtonBuilder().setCustomId('settings/setNewValue').setLabel('Set new value').setStyle(ButtonStyle.Primary);
 			baseButtonActionRow.setComponents(setNewValueButton, resetButton);
 		}
-	
+
 		if (setting.isBoolean()) {
 			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
 			baseButtonActionRow.setComponents(toggleButton, resetButton);
 		}
-	
+
 		if (setting.isChoices()) {
 			const choiceMenu = new SelectMenuBuilder()
 				.setCustomId('settings/menu')
 				.setMaxValues(1)
 				.setMinValues(1)
 				.setPlaceholder('Choose an option...')
-				.setOptions(...setting.options.map((option) => ({ label: option.name, value: option.value })));
-	
+				.setOptions(...setting.options.map((option) => ({ label: option.name, value: String(option.value) })));
+
 			baseSelectMenuActionRow.setComponents(choiceMenu);
 		}
 		return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];

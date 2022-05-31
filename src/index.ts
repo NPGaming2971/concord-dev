@@ -15,4 +15,9 @@ client.commands.load({
 		extensions: ["ts"],
 	},
 });
+
+process.on('unhandledRejection', (err) => {
+	console.log(err)
+})
+
 client.login(process.env.TOKEN);

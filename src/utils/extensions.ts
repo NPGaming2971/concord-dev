@@ -1,27 +1,48 @@
-//@ts-nocheck
 import { BaseGuildTextChannel, Channel, ChannelType } from 'discord.js';
-import type { ChannelRegistry } from '../structures';
+import type { ChannelRegistry, Group } from '../structures';
 import type { RegisterableChannel } from '../typings';
 import { ApplyToClass } from './decorators';
 
-export class Extensions {
+/*
+EXTENDING GUIDES
 
+This class is purely made to extend other classes.
+
+- All function here must use the @ApplyToClass decorator.
+- The first parameter will always be the prototype of the target class, or the class itself if `makeStatic: true`.
+Additional parameter must be specified from the 2nd param onward.
+- `this` is bound to this class.
+- Methods that use other extended methods must be specified below the used method.
+- Specify `isGetter: true` on ApplyToClass options to make the extended function a getter.
+
+*/
+
+export class Extensions {
+	//@ts-expect-error
 	@ApplyToClass(BaseGuildTextChannel)
-	static fetchRegistry() {
-		return this.client.registry.fetch(this.id);
+	static fetchRegistry(channel: BaseGuildTextChannel) {
+		return channel.client.registry.fetch(channel.id);
 	}
 
-    @ApplyToClass(Channel)
-    static isRegisterable() {
-        return [ChannelType.GuildText, ChannelType.GuildNews].includes(this.type)
-    }
+	//@ts-expect-error
+	@ApplyToClass(BaseGuildTextChannel, { isGetter: true })
+	static group(channel: BaseGuildTextChannel) {
+		const registry = channel.fetchRegistry();
+		return registry?.group;
+	}
+
+	@ApplyToClass(Channel)
+	static isRegisterable(channel: Channel) {
+		return [ChannelType.GuildText, ChannelType.GuildNews].includes(channel.type);
+	}
 }
 
 declare module 'discord.js' {
 	interface BaseGuildTextChannel {
 		fetchRegistry(): ChannelRegistry | null;
+        get group(): Group | null
 	}
-    interface Channel {
-        isRegisterable(): this is RegisterableChannel
-    }
+	interface Channel {
+		isRegisterable(): this is RegisterableChannel;
+	}
 }

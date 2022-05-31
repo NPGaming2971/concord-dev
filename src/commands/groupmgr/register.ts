@@ -32,7 +32,7 @@ export class RegisterCommand extends Command {
 				cooldowns: {
 					delay: Time.Minute * 5,
 					scope: CooldownScope.Guild
-				},
+				}
 			}
 		});
 	}
@@ -40,14 +40,14 @@ export class RegisterCommand extends Command {
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
 		const channel = interaction.options.getChannel('channel')! ?? interaction.channel;
 
-		if (!channel.isRegisterable()) return
+		if (!channel.isRegisterable()) return;
 
 		const forceCreateNew = interaction.options.getBoolean('force-create-new') ?? false;
 
 		await interaction.deferReply();
 
 		const { prepareError } = ResponseFormatters;
-		if (!channel?.permissionsFor(interaction.guild.me!)?.has('ManageWebhooks'))
+		if (!channel.permissionsFor(interaction.guild.members.me!)?.has('ManageWebhooks'))
 			return interaction.editReply(prepareError('MISSING_CLIENT_PERMISSIONS', { permissions: 'ManageWebhooks' }));
 
 		if (channel.fetchRegistry()) {
@@ -72,7 +72,7 @@ export class RegisterCommand extends Command {
 
 		function createWebhook(channel: RegisterableChannel) {
 			channel
-				.createWebhook('Concord', { reason: `Requested by ${interaction.user.tag}` })
+				.createWebhook('Concord', { reason: `Registeration authorized by ${interaction.user.tag}` })
 				.then(async (webhook) => {
 					webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
 					interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
