@@ -1,9 +1,9 @@
 import { Awaitable, Base, Client, If, MessageResolvable, WebhookClient, WebhookMessageOptions } from 'discord.js';
-import type { APIMessage } from 'discord.js/node_modules/discord-api-types/v10';
+import type { APIMessage } from 'discord.js';
 import type { APIChannelRegistry, RegisterableChannel } from '../../typings';
 
 import { Util } from '../../utils/';
-import { ConcordError } from '../errors/ConcordError';
+import { Error } from '../errors/ConcordError';
 
 export interface ChannelRegistry<Registered extends boolean = boolean> {
 	channelId: string;
@@ -51,7 +51,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	private validateActionConditions() {
-		if (!this.isRegistered()) throw new ConcordError('CHANNEL_UNREGISTERED');
+		if (!this.isRegistered()) throw new Error('CHANNEL_UNREGISTERED', this.channel);
 	}
 
 	public async send(options: WebhookMessageOptions | string): Promise<APIMessage> {
@@ -73,7 +73,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	public fetchWebhook() {
-		if (!this.isRegistered()) throw new ConcordError('CHANNEL_UNREGISTERED');
+		if (!this.isRegistered()) throw new Error('CHANNEL_UNREGISTERED', this.channel);
 
 		const { token, id } = Util.destructureWebhookURL(this.webhook!);
 

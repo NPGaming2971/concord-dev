@@ -12,14 +12,14 @@ import {
 	TextInputStyle,
 	ModalBuilder,
 	TextInputBuilder,
+	SelectMenuBuilder
 } from 'discord.js';
 
-import { Command, Group } from '../../structures/';
+import { Command, Error, Group, ResponseFormatters } from '../../structures/';
 import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
 import { Util } from '../../utils/';
 import { isOk } from '@sapphire/result';
-import { SelectMenuBuilder } from '@discordjs/builders';
 export class SettingsCommand extends Command {
 	constructor() {
 		super({
@@ -36,26 +36,34 @@ export class SettingsCommand extends Command {
 					},
 					{
 						name: 'option-name',
-						description: 'placeholder',
+						description: 'The setting you want to modify.',
 						type: ApplicationCommandOptionType.String,
 						autocomplete: true
+					},
+					{
+						name: 'ephemeral',
+						description: 'Whether to reply ephemerally. [default: false]',
+						type: ApplicationCommandOptionType.Boolean
 					}
 				]
 			}
 		});
 	}
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>): Promise<any> {
-		await interaction.deferReply();
-
-		const targetGroup = interaction.options.getString('target-group', true);
+		const inputGroup = interaction.options.getString('target-group', true);
 		const inputOptionName = interaction.options.getString('option-name');
+		const ephemeral = interaction.options.getBoolean('ephemeral') ?? false;
 
 		const option = Settings.find((i) => i.path === inputOptionName);
 
 		if (!option) return interaction.editReply('No such option.');
 
-		const group = interaction.client.groups.fetch(targetGroup);
-		if (!group) return interaction.editReply('No such group.');
+		const hidden = (option.isString() && option.hidden) || ephemeral;
+
+		await interaction.deferReply({ ephemeral: hidden });
+
+		const group = interaction.client.groups.fetch(inputGroup);
+		if (!group) return interaction.editReply(ResponseFormatters.prepareError(new Error('NON_EXISTENT_RESOURCE', Group.name, inputGroup)));
 
 		const groupData = Util.flatten(group.toJSON());
 		const embed = this.appendCurrentValue(option, groupData);
@@ -75,66 +83,66 @@ export class SettingsCommand extends Command {
 
 		const collector = response.createMessageComponentCollector({ filter, idle: 15000 });
 
-		collector.on('collect', async (i): Promise<any> => {
-			if (i.isSelectMenu()) {
-				i.deferUpdate();
-				const newValue = i.values[0];
-				updateGroup({ group, interaction, newValue, option });
-			}
-
-			if (i.isButton()) {
-				if (i.customId === 'settings/toggle') {
+		collector
+			.on('collect', async (i): Promise<any> => {
+				if (i.isSelectMenu()) {
 					i.deferUpdate();
-					updateGroup({ newValue: !groupData[option.path], option, group, interaction });
+					const newValue = i.values[0];
+					updateGroup({ group, interaction, newValue, option });
 				}
 
-				if (i.customId === 'settings/resetToDefault') {
-					i.deferUpdate();
-					updateGroup({ newValue: option.default, option, group, interaction });
+				if (i.isButton()) {
+					if (i.customId === 'settings/toggle') {
+						i.deferUpdate();
+						updateGroup({ newValue: !groupData[option.path], option, group, interaction });
+					}
+
+					if (i.customId === 'settings/resetToDefault') {
+						i.deferUpdate();
+						updateGroup({ newValue: option.default, option, group, interaction });
+					}
+
+					if (i.customId === 'settings/setNewValue') {
+						if (!option.isString()) return;
+
+						const filter = (m: ModalSubmitInteraction) => m.user.id === i.user.id && m.customId === `concord:settings/${i.id}`;
+
+						const [min, max] = option.restraints?.lengthRange ?? [0, 4000];
+						const textField = new TextInputBuilder()
+							.setCustomId(`textInput`)
+							.setStyle(option.style ?? TextInputStyle.Short)
+							.setLabel('New value')
+							.setMinLength(min ?? 0)
+							.setMaxLength(max ?? 4000)
+							.setValue(groupData[option.path] ?? '')
+							.setRequired(true);
+
+						const modal = new ModalBuilder()
+							.setComponents([new ActionRowBuilder<TextInputBuilder>().setComponents([textField])])
+							.setCustomId(`concord:settings/${i.id}`)
+							.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`);
+
+						i.showModal(modal);
+
+						try {
+							const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter });
+
+							const newValue = modalInteraction.fields.getTextInputValue('textInput');
+
+							const validationCheck = await option.validate(newValue, group);
+
+							if (!isOk(validationCheck)) {
+								return modalInteraction.reply({ content: `Validation failed:\n` + validationCheck.error, ephemeral: hidden });
+							}
+
+							updateGroup({ newValue, option, group, interaction: modalInteraction });
+						} catch (_) {}
+					}
 				}
-
-				if (i.customId === 'settings/setNewValue') {
-					if (!option.isString()) return;
-
-					const filter = (m: ModalSubmitInteraction) => m.user.id === i.user.id && m.customId === `concord:settings/${i.id}`;
-
-					const [min, max] = option.restraints?.lengthRange ?? [0, 4000];
-					const textField = new TextInputBuilder()
-						.setCustomId(`textInput`)
-						.setStyle(option.style ?? TextInputStyle.Short)
-						.setLabel('New value')
-						.setMinLength(min ?? 0)
-						.setMaxLength(max ?? 4000)
-						.setValue(groupData[option.path] ?? '')
-						.setRequired(true);
-
-					const modal = new ModalBuilder()
-						.setComponents(new ActionRowBuilder<TextInputBuilder>().setComponents(textField))
-						.setCustomId(`concord:settings/${i.id}`)
-						.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`);
-
-					i.showModal(modal);
-
-					try {
-						const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter });
-
-						const newValue = modalInteraction.fields.getTextInputValue('textInput');
-
-						const validationCheck = await option.validate(newValue);
-
-						if (!isOk(validationCheck)) {
-							return modalInteraction.reply(`Validation failed:\n` + validationCheck.error);
-						}
-
-						updateGroup({ newValue, option, group, interaction: modalInteraction });
-					} catch (_) {}
-				}
-			}
-		});
-
-		collector.on('end', () => {
-			interaction.editReply({ components: [] });
-		});
+			})
+			.on('end', () => {
+				interaction.editReply({ components: [] });
+			});
 
 		type UpdateGroupOption = {
 			newValue: string | number | boolean | null;
@@ -192,11 +200,13 @@ export class SettingsCommand extends Command {
 
 		const data = Util.escapeMaskedLink(Util.escapeQuote(String(flattenedGroup[option.path])));
 
-		return this.parseOption(option, flattenedGroup.tag).addFields({
-			name: 'Current value',
-			value: isParagraph ? data : Formatters.inlineCode(data),
-			inline: !isParagraph
-		});
+		return this.parseOption(option, flattenedGroup.tag).addFields([
+			{
+				name: 'Current value',
+				value: isParagraph ? data : Formatters.inlineCode(data),
+				inline: !isParagraph
+			}
+		]);
 	}
 
 	private parseOption(option: Setting, groupTag: string) {
@@ -207,11 +217,13 @@ export class SettingsCommand extends Command {
 			.setFooter({
 				text: `Currently setting: '@${groupTag}'. Option type: '${option.type}'.`
 			})
-			.addFields({
-				name: 'Default value',
-				value: Formatters.inlineCode(String(option.default)),
-				inline: true
-			});
+			.addFields([
+				{
+					name: 'Default value',
+					value: Formatters.inlineCode(String(option.default)),
+					inline: true
+				}
+			]);
 
 		if (option.isChoices()) {
 			embed.spliceFields(0, 0, {
@@ -233,17 +245,17 @@ export class SettingsCommand extends Command {
 	private renderComponents(setting: Setting) {
 		const resetButton = new ButtonBuilder().setCustomId('settings/resetToDefault').setLabel('Reset to default').setStyle(ButtonStyle.Secondary);
 
-		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents(resetButton);
+		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents([resetButton]);
 		const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
 
 		if (setting.isString()) {
 			const setNewValueButton = new ButtonBuilder().setCustomId('settings/setNewValue').setLabel('Set new value').setStyle(ButtonStyle.Primary);
-			baseButtonActionRow.setComponents(setNewValueButton, resetButton);
+			baseButtonActionRow.setComponents([setNewValueButton, resetButton]);
 		}
 
 		if (setting.isBoolean()) {
 			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
-			baseButtonActionRow.setComponents(toggleButton, resetButton);
+			baseButtonActionRow.setComponents([toggleButton, resetButton]);
 		}
 
 		if (setting.isChoices()) {
@@ -252,9 +264,9 @@ export class SettingsCommand extends Command {
 				.setMaxValues(1)
 				.setMinValues(1)
 				.setPlaceholder('Choose an option...')
-				.setOptions(...setting.options.map((option) => ({ label: option.name, value: String(option.value) })));
+				.setOptions(setting.options.map((option) => ({ label: option.name, value: String(option.value) })));
 
-			baseSelectMenuActionRow.setComponents(choiceMenu);
+			baseSelectMenuActionRow.setComponents([choiceMenu]);
 		}
 		return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];
 	}

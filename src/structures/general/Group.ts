@@ -1,22 +1,28 @@
 import type { Database } from 'better-sqlite3';
-import { Base, Client, Formatters, LocaleString, Message, WebhookMessageOptions } from 'discord.js';
+import { Base, Client, Formatters, LocaleString, Message, SnowflakeUtil, WebhookMessageOptions } from 'discord.js';
 import { GroupMessageManager, GroupMessageSendOptions } from '../../manager/GroupMessageManager';
 import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
-import type { APIGroup } from '../../typings';
-import type { GroupStatusType } from '../../typings/enums';
-import { DatabaseUtil } from '../../utils/DatabaseUtil';
-import { Util } from '../../utils';
-const { fallback } = Util;
-import { cloneDeep } from 'lodash';
+import { GroupRequestManager } from '../../manager/GroupRequestManager';
+import type { APIGroup, DeepPartial } from '../../typings';
+import { Events, GroupStatusType } from '../../typings/enums';
+import { Util } from '../../utils/Util';
+import { cloneDeep, isUndefined } from 'lodash';
+import Settings from '../../../assets/settings';
 
+type SettingValue = string | number | boolean | null;
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
 		super(client);
 
 		this.channels = new GroupRegistryManager(this);
+
+		this.requests = new GroupRequestManager(this);
+
 		this.messages = new GroupMessageManager(this);
+
 		this.database = database;
-		this.raw = data;
+		this.data = data;
+
 		this._patch(data);
 	}
 
@@ -54,6 +60,7 @@ export class Group extends Base implements Group {
 	}
 
 	private _patch(data: Partial<APIGroup>) {
+		
 		if (data.tag) {
 			this.tag = data.tag;
 		}
@@ -62,77 +69,113 @@ export class Group extends Base implements Group {
 			this.id = data.id;
 		}
 
-		if (data.createdTimestamp) {
-			this.createdTimestamp = data.createdTimestamp;
-		}
-
-		if (data.data?.channelLimit) {
-			this.channelLimit = data.data.channelLimit;
+		if (data.data) {
+			if (data.data.channelLimit) this.channelLimit = data.data.channelLimit;
 		}
 
 		if (data.ownerId) {
 			this.ownerId = data.ownerId;
 		}
 
-		this.locale = data.locale as LocaleString | null;
+		if (data.entrance) {
+			const { password, requests } = data.entrance;
+
+			if (password) {
+				this.password = password;
+			}
+
+			if (requests) {
+				this.requests.cache.clear();
+				for (const request of requests) {
+					this.requests._add(request, true, { id: request.id, extras: [this.id] });
+				}
+			}
+		}
+
+		if (data.locale) this.locale = data.locale;
 		if (data.status) {
 			this.status = data.status;
 		}
 
 		if (data.settings) {
-			this.settings = data.settings
+			this.settings = data.settings;
 		}
 
 		if (!this.firstRun) {
 			this.firstRun = false;
 
 			this.channels.cache.clear();
-			const registries = this.client.statements.fetchRegistriesOfGroup.all(this.id);
+			const registries = this.client.database.statements.fetchRegistriesOfGroup.all(this.id);
 			for (const registry of registries) {
-				//@ts-expect-error
+				this.client.registry._add(registry, true, { id: registry.id, extras: [] });
 				this.channels._add(registry, true, { id: registry.id, extras: [] });
 			}
 		}
 
 		if (data.appearances) {
-			this.avatar = data.appearances.avatar;
+			if ('avatar' in data.appearances) this.avatar = data.appearances.avatar;
 
 			if ('banner' in data.appearances) this.banner = data.appearances.banner ?? null;
 
-			this.name = data.appearances.name;
+			if ('name' in data.appearances) this.name = data.appearances.name;
 
 			if ('description' in data.appearances) this.description = data.appearances.description;
 		}
 	}
+
+	public get createdTimestamp() {
+		return Number(SnowflakeUtil.decode(this.id).timestamp.toString());
+	}
+
 	public get createdAt() {
 		return new Date(this.createdTimestamp);
 	}
 
 	public override toJSON(): APIGroup {
-		return this.raw;
+		return { ...this.data };
+	}
+
+	public getSetting(path: string, defaultValue?: SettingValue) {
+		const settingValue = Util.getProperty(this.settings, path);
+
+		if (isUndefined(defaultValue)) {
+			defaultValue = Settings.find((i) => i.path === `settings.${path}`)?.default ?? null;
+		}
+
+		if (!settingValue) {
+			this.edit({ settings: { [`${path}`]: defaultValue } });
+		}
+
+		return settingValue;
 	}
 
 	public override toString() {
 		return Formatters.inlineCode(`@` + this.tag);
 	}
 
-	public edit(data: Partial<APIGroup>) {
+	public edit(data: DeepPartial<APIGroup>) {
 		const apiGroup = Util.flatten(this.toJSON());
 		const updateData = Util.flatten(data);
 
+		if (!Object.values(updateData).length) return;
+
 		for (const [key, value] of Object.entries(updateData)) {
 			const preData = apiGroup[key];
-			apiGroup[key] = fallback(value, preData);
+			apiGroup[key] = Util.fallback(value, preData);
 		}
 
 		//TODO
 		const preGroup = cloneDeep(this);
-		const groupData = Util.unflatten(Object.assign(apiGroup, { settings: { maxCharacterLimit: 1024 } })) as APIGroup;
+		const groupData = Util.unflatten(apiGroup) as APIGroup;
 
-		this.client.statements.groupUpdate.run(DatabaseUtil.makeDatabaseCompatible(groupData));
+		this.client.database.statements.groupUpdate.run(this.client.database.makeCompatible(groupData));
 		this._patch(groupData);
 
-		this.client.emit('groupUpdate', preGroup, this);
+		this.client.emit(Events.GroupUpdate, preGroup, this);
+	}
+
+	public delete() {
+		return this.client.groups.delete(this);
 	}
 }
 
@@ -144,15 +187,15 @@ export interface Group {
 	banner: string | null;
 	name: string | null;
 	description: string | null;
-	createdTimestamp: number;
-	createdAt: Date;
+	password: string | null;
 	channelLimit: number;
-	raw: APIGroup;
+	data: APIGroup;
 	ownerId: string;
 	locale: LocaleString | null;
 	channels: GroupRegistryManager;
+	requests: GroupRequestManager;
 	messages: GroupMessageManager;
 	status: GroupStatusType;
 	database: Database;
-	settings: APIGroup['settings']
+	settings: APIGroup['settings'];
 }

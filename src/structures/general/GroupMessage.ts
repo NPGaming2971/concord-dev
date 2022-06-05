@@ -1,19 +1,19 @@
 import { Base, Client } from 'discord.js';
-import type { APIMessage } from 'discord.js/node_modules/discord-api-types/v10';
+import type { APIMessage } from 'discord.js';
 import type { APIGroupMessage, RegisterableChannel } from '../../typings';
 import { Util } from '../../utils/';
 import type { ChannelRegistry } from './ChannelRegistry';
 import type { Group } from './Group';
-import { compact } from 'lodash'
-import { ConcordError } from '../errors/ConcordError';
+import { compact } from 'lodash';
+import { TypeError } from '../errors/ConcordError';
 
 export interface GroupMessage {
 	webhook: string;
 	parentId: [string, string] | [null, null];
-	message: APIMessage
+	message: APIMessage;
 	group: Group;
-	registry: ChannelRegistry
-	id: string
+	registry: ChannelRegistry;
+	id: string;
 }
 
 export class GroupMessage extends Base {
@@ -25,28 +25,42 @@ export class GroupMessage extends Base {
 	}
 
 	public patch(data: APIGroupMessage) {
-		this.webhook = data.url;
-		this.parentId = data.parentId;
-		this.registry = data.registry
-		this.id = data.message.id
-		this.message = data.message;
+		if ('url' in data) {
+			this.webhook = data.url;
+		}
+
+		if ('parentId' in data) {
+			this.parentId = data.parentId;
+		}
+
+		if ('registry' in data) {
+			this.registry = data.registry;
+		}
+
+		if ('message' in data) {
+			this.message = data.message;
+
+			if ('id' in data.message) {
+				this.id = data.message.id;
+			}
+		}
 	}
 
 	public fetchParent() {
 		const [channelId, messageId] = this.parentId;
 
-		if (!messageId || !channelId) throw new ConcordError('THIS_MESSAGE_IS_ORPHANED')
+		if (!messageId || !channelId) throw new TypeError('THIS_MESSAGE_IS_ORPHANED');
 
-		const channel = this.client.channels.cache.get(channelId) as RegisterableChannel | undefined
+		const channel = this.client.channels.cache.get(channelId) as RegisterableChannel | undefined;
 		return channel?.messages.fetch(messageId);
 	}
 
 	public hasParent() {
-		return Boolean(compact(this.parentId).length)
+		return Boolean(compact(this.parentId).length);
 	}
 
 	public fetchWebhook() {
 		const { id, token } = Util.destructureWebhookURL(this.webhook);
-		return this.client.fetchWebhook(id, token)
+		return this.client.fetchWebhook(id, token);
 	}
 }

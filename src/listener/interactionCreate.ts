@@ -1,5 +1,5 @@
 import { ChannelType, Client, Formatters, Interaction, MessagePayload, PermissionResolvable } from 'discord.js';
-import { Listener, ResponseFormatters } from '../structures/';
+import { Error, Listener, ResponseFormatters } from '../structures/';
 import { Constants } from '../typings/constants';
 import { Converters } from '../utils/Converters';
 import { fromAsync } from '@sapphire/result';
@@ -35,42 +35,32 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 
 				if (elevatedPermissions) {
 					if (!Constants.Administrators.includes(interaction.user.id))
-						return interaction.reply(prepareError('ELEVATED_PERMISSION_REQUIRED'));
+						return interaction.reply(prepareError(new Error('ELEVATED_PERMISSION_REQUIRED')));
 				}
 
 				if (whitelist) {
 					const { channels, guilds } = whitelist;
 
-					if (guilds && !guilds?.includes(interaction.guildId)) return interaction.reply(prepareError('DISALLOWED_LOCATION'));
+					if (guilds && !guilds?.includes(interaction.guildId))
+						return interaction.reply(prepareError(new Error('DISALLOWED_LOCATION', 'guild')));
 
-					if (channels && !channels?.includes(interaction.channelId)) return interaction.reply(prepareError('DISALLOWED_LOCATION'));
+					if (channels && !channels?.includes(interaction.channelId))
+						return interaction.reply(prepareError(new Error('DISALLOWED_LOCATION', 'channel')));
 				}
 
 				if (requiredUserPermissions) {
 					if (!interaction.memberPermissions.has(requiredUserPermissions))
-						return interaction.reply(
-							prepareError(`MISSING_USER_PERMISSIONS`, {
-								permissions: formatPermissions(requiredUserPermissions)
-							})
-						);
+						return interaction.reply(prepareError(new Error(`MISSING_USER_PERMISSIONS`, formatPermissions(requiredUserPermissions))));
 				}
 
 				if (requiredClientPermissions) {
 					if (!interaction.guild.members.me?.permissions.has(requiredClientPermissions))
-						return interaction.reply(
-							prepareError(`MISSING_CLIENT_PERMISSIONS`, {
-								permissions: formatPermissions(requiredClientPermissions)
-							})
-						);
+						return interaction.reply(prepareError(new Error(`MISSING_CLIENT_PERMISSIONS`, formatPermissions(requiredClientPermissions))));
 				}
 
 				if (canRunIn) {
 					if (!canRunIn.includes(interaction.channel!.type)) {
-						return interaction.reply(
-							prepareError('CHANNEL_TYPE_PRECONDITIONS_FAILED', {
-								channelTypes: formatChannelTypes(canRunIn)
-							})
-						);
+						return interaction.reply(prepareError(new Error('CHANNEL_TYPE_PRECONDITIONS_FAILED', formatChannelTypes(canRunIn))));
 					}
 				}
 			}

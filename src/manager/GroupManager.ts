@@ -1,10 +1,8 @@
 import type { Database } from 'better-sqlite3';
 import { BaseFetchOptions, CachedManager, Client, SnowflakeUtil } from 'discord.js';
-import { Group, ChannelRegistry } from '../structures/';
-import { ConcordError } from '../structures/';
-import type { APIGroup, GroupCreateOptions, GroupResolvable } from '../typings';
-import { GroupStatusType } from '../typings/enums';
-import { DatabaseUtil } from '../utils/DatabaseUtil';
+import { Group, ChannelRegistry, Error } from '../structures/';
+import type { APIGroup, GroupCreateOptions, GroupResolvable, GroupSettings } from '../typings';
+import { Events, GroupStatusType } from '../typings/enums';
 
 export class GroupManager extends CachedManager<string, Group, GroupResolvable> {
 	private database: Database;
@@ -23,20 +21,19 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			if (existing) return existing;
 		}
 
-		const { fetchGroupById } = this.client.statements;
+		const { fetchGroupById } = this.client.database.statements;
 
 		const data: APIGroup | undefined = fetchGroupById.get(id);
-
 		if (!data) return null;
-		//@ts-expect-error
 		return this._add(data, cache, { id: id, extras: [] });
 	}
 
 	//TODO: Validate locale
-	public create(tag: string, { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' }: GroupCreateOptions) {
+	public create(tag: string, options: GroupCreateOptions) {
+		const { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' } = options
 		const ownerId = this.client.users.resolveId(owner);
-
-		if (!ownerId) throw new ConcordError('INVALID_OWNER');
+		if (this.cache.find((i) => i.tag === tag))
+			throw new Error('DUPLICATED_RESOURCE', this.holds.name, tag);
 
 		const data = {
 			tag,
@@ -59,17 +56,22 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			id: SnowflakeUtil.generate({ timestamp: Date.now() }).toString(),
 			status: GroupStatusType.Public,
 			bans: [],
-			settings: {
-				maxCharacterLimit: 1024
-			},
-			createdTimestamp: Date.now()
+			settings: this.defaultGroupSettings
 		};
 
-		this.client.statements.groupCreate.run(DatabaseUtil.makeDatabaseCompatible(data));
+		this.client.database.statements.groupCreate.run(this.client.database.makeCompatible(data));
 
-		//@ts-expect-error
-		this.client.emit('groupCreate', this._add(data, true, { id: data.id, extras: [this.database] }));
+		this.client.emit(Events.GroupCreate, this._add(data, true, { id: data.id, extras: [this.database] }));
 		return this.cache.get(data.id)!;
+	}
+
+	private get defaultGroupSettings(): GroupSettings {
+		return {
+			maxCharacterLimit: 1900,
+			requests: {
+				deleteDuplicate: true
+			}
+		};
 	}
 
 	public override resolve(group: GroupResolvable): Group {
@@ -87,18 +89,20 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 	}
 
 	public delete(group: GroupResolvable) {
-		const id = this.resolveId(group);
+		const target = this.resolve(group);
 
-		const { deleteGroup } = this.client.statements;
+		const { deleteGroup } = this.client.database.statements;
 
-		deleteGroup.run(id);
-		this.cache.delete(id);
+		deleteGroup.run(target.id);
+		this.database.transaction(() => target.channels.cache.map((i) => i.edit({ groupId: null })))();
+
+		this.client.emit(Events.GroupDelete, target);
+		this.cache.delete(target.id);
 	}
 
 	private _populateCache() {
-		this.client.statements.fetchAllGroups.all().map((e) => {
-			const parsed = DatabaseUtil.parseRawData(e);
-			//@ts-expect-error
+		this.client.database.statements.fetchAllGroups.all().map((e) => {
+			const parsed = this.client.database.parseData(e);
 			this._add(parsed, true, { id: e.id, extras: [this.database] });
 		});
 	}

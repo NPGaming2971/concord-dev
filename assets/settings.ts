@@ -1,9 +1,23 @@
 import { from, fromAsync, Result } from '@sapphire/result';
 import { Awaitable, TextInputStyle } from 'discord.js';
-import { GroupPermissionsBitfield } from '../src/structures';
-import type { GroupPermissionsString } from '../src/typings';
-import { Util } from '../src/utils';
+import { Group, GroupPermissionsBitfield } from '../src/structures';
+import type { GroupPermissionsString, Maybe } from '../src/typings';
+import { GroupStatusType } from '../src/typings/enums';
+import { Converters, Util } from '../src/utils';
 const { isImage } = Util;
+
+export enum CategoryType {
+	Appearances = 'Appearances',
+	Security = 'Security',
+	Requests = 'Requests'
+}
+
+enum SettingType {
+	String = 'string',
+	Choices = 'choices',
+	Boolean = 'boolean',
+	Number = 'number'
+}
 
 const DefaultValidate = (): Result<void, string> => from(() => {});
 
@@ -27,7 +41,9 @@ export class Setting {
 		if (this.isString() && data.type === SettingType.String) {
 			this.validate = data.validate;
 
-			this.style = data.style;
+			this.style = data.style ?? TextInputStyle.Short;
+
+			this.hidden = data.hidden ?? false;
 
 			this.restraints.lengthRange = data.restraints?.lengthRange ?? [null, null];
 		}
@@ -51,6 +67,10 @@ export class Setting {
 		return this.type === SettingType.Choices;
 	}
 
+	public isNumber(): this is NumberSetting {
+		return this.type === SettingType.Number;
+	}
+
 	public isString(): this is StringSetting {
 		return this.type === SettingType.String;
 	}
@@ -58,80 +78,6 @@ export class Setting {
 	public isBoolean(): this is BooleanSetting {
 		return this.type === SettingType.Boolean;
 	}
-}
-
-type SettingData = ChoicesSetting | StringSetting | BooleanSetting;
-
-export interface Setting extends BaseSetting {}
-
-interface ChoicesSetting extends BaseSetting {
-	type: SettingType.Choices;
-	options: ChoiceOption[];
-	default: string | number | null;
-}
-
-interface BooleanSetting extends BaseSetting {
-	type: SettingType.Boolean;
-	default: boolean | null;
-}
-
-interface ChoiceOption {
-	name: string;
-	description?: string;
-	value: string | number;
-}
-
-interface StringSetting extends BaseSetting {
-	type: SettingType.String;
-	restraints?: {
-		requiredGroupPermissions?: GroupPermissionsString[];
-		lengthRange?: [number | null, number | null];
-	};
-	default: string | null;
-	validate: (value: string) => Awaitable<Result<void, string>>;
-	style?: TextInputStyle;
-}
-
-enum SettingType {
-	String = 'string',
-	Choices = 'choices',
-	Boolean = 'boolean'
-}
-
-interface BaseSetting {
-	name: string;
-	description?: string;
-	/**
-	 * Default value for this settings.
-	 */
-	default: string | number | boolean | null;
-	/**
-	 * Group property access path.
-	 */
-	path: string;
-
-	type: SettingType;
-	restraints?: {
-		/**
-		 * The required group permission(s) to change this setting.
-		 */
-		requiredGroupPermissions?: GroupPermissionsString[];
-	};
-	help?: {
-		/**
-		 * Category of this setting
-		 */
-		category?: CategoryType;
-		/**
-		 * Image preview link of this setting.
-		 */
-		preview?: string;
-	};
-}
-
-export enum CategoryType {
-	Appearances = 'Appearances',
-	Security = 'Security'
 }
 
 const data: SettingData[] = [
@@ -153,6 +99,33 @@ const data: SettingData[] = [
 		restraints: {
 			lengthRange: [2, 32]
 		}
+	},
+	{
+		name: 'Password',
+		description:
+			'Set your group password. New channels joining this group will be required to input this password if this group status is `protected`.',
+		default: null,
+		path: 'entrance.password',
+		type: SettingType.String,
+		validate: (_, group) => from(() => {
+			if (group?.status !== GroupStatusType.Protected) throw new Error('Your group status settings must be `protected` to use this settings.')
+		}),
+		help: {
+			category: CategoryType.Security
+		},
+		style: TextInputStyle.Short,
+		hidden: true
+	},
+	{
+		name: 'Delete Duplicate',
+		description:
+			'Automatically delete duplicated requests from the same channel.',
+		default: true,
+		path: 'settings.requests.deleteDuplicate',
+		type: SettingType.Boolean,
+		help: {
+			category: CategoryType.Requests
+		},
 	},
 	{
 		name: 'Status',
@@ -188,12 +161,21 @@ const data: SettingData[] = [
 	{
 		name: 'Max Character Limit',
 		path: 'settings.maxCharacterLimit',
-		default: 'dynamic',
-		type: SettingType.Choices,
+		default: 2000,
+		type: SettingType.Number,
 		description: 'The character limit of a message sent in your group.',
-		options: [],
 		help: {
 			category: CategoryType.Appearances
+		},
+		restraints: {
+			range: [0, 1900]
+		},
+
+		validate: function (value: number) {
+			const range = this.restraints?.range;
+			return fromAsync(() => {
+				validateNumberRange(value, range);
+			});
 		}
 	},
 	{
@@ -225,6 +207,98 @@ const data: SettingData[] = [
 		}
 	}
 ];
+
+type SettingData = ChoicesSetting | StringSetting | BooleanSetting | NumberSetting;
+
+export interface Setting extends BaseSetting {}
+
+interface ChoicesSetting extends BaseSetting {
+	type: SettingType.Choices;
+	options: ChoiceOption[];
+	default: Maybe<string | number>;
+}
+
+interface BooleanSetting extends BaseSetting {
+	type: SettingType.Boolean;
+	default: boolean | null;
+}
+
+interface ChoiceOption {
+	name: string;
+	description?: string;
+	value: string | number;
+}
+
+interface NumberSetting extends BaseSetting {
+	type: SettingType.Number;
+	restraints?: {
+		requiredGroupPermissions?: GroupPermissionsString[];
+		range?: [Maybe<number>, Maybe<number>];
+	};
+	default: Maybe<number>;
+	validate: ValidateFunction<number>;
+}
+
+interface StringSetting extends BaseSetting {
+	type: SettingType.String;
+	restraints?: {
+		requiredGroupPermissions?: GroupPermissionsString[];
+		lengthRange?: [Maybe<number>, Maybe<number>];
+	};
+	default: string | null;
+	validate: ValidateFunction<string>;
+	style?: TextInputStyle;
+	hidden?: boolean;
+}
+interface BaseSetting {
+	name: string;
+	description?: string;
+	/**
+	 * Default value for this settings.
+	 */
+	default: string | number | boolean | null;
+	/**
+	 * Group property access path.
+	 */
+	path: string;
+
+	type: SettingType;
+	restraints?: {
+		/**
+		 * The required group permission(s) to change this setting.
+		 */
+		requiredGroupPermissions?: GroupPermissionsString[];
+	};
+	help?: {
+		/**
+		 * Category of this setting
+		 */
+		category?: CategoryType;
+		/**
+		 * Image preview link of this setting.
+		 */
+		preview?: string;
+	};
+}
+
+type ValidateFunction<T> = (value: T, group?: Group) => Awaitable<Result<void, string>>;
+
+function validateNumberRange(n: number, range: [Maybe<number>, Maybe<number>] = [null, null]) {
+	const [low = -Infinity, high = Infinity] = range;
+
+	if (n < low!) {
+		throw new RangeError('LOWER_THAN_RANGE');
+	} else if (n > high!) {
+		throw new RangeError('HIGHER_THAN_RANGE');
+	}
+}
+
+//@ts-expect-error
+function validateNumberString(value: string) {
+	const parsed = Converters.parseString(value);
+
+	if (!parsed) throw new TypeError('Not a valid number.');
+}
 
 async function validateImage(testValue: string) {
 	const URLValidationRegex = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g;

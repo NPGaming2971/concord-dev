@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
-import { ResponseFormatters, Command, CooldownScope } from '../../structures/';
+import { ResponseFormatters, Command, CooldownScope, Error } from '../../structures/';
 import type { RegisterableChannel } from '../../typings';
+import { Constants } from '../../typings/constants';
 import { Time } from '../../typings/enums';
 
 export class RegisterCommand extends Command {
@@ -48,10 +49,10 @@ export class RegisterCommand extends Command {
 
 		const { prepareError } = ResponseFormatters;
 		if (!channel.permissionsFor(interaction.guild.members.me!)?.has('ManageWebhooks'))
-			return interaction.editReply(prepareError('MISSING_CLIENT_PERMISSIONS', { permissions: 'ManageWebhooks' }));
+			return interaction.editReply(prepareError(new Error('MISSING_CLIENT_PERMISSIONS', 'ManageWebhooks')));
 
 		if (channel.fetchRegistry()) {
-			return interaction.editReply('This channel is already set up.');
+			return interaction.editReply(ResponseFormatters.appendEmojiToString(Constants.Emojis.Failure, 'This channel is already registered.'));
 		}
 
 		const webhooks = (await channel.fetchWebhooks()).filter((e) => e.owner?.id === interaction.client.user?.id);
@@ -59,25 +60,25 @@ export class RegisterCommand extends Command {
 		if (webhooks.size !== 0 || !forceCreateNew) {
 			const [passed, failed] = webhooks.partition((e) => e.id === webhooks.first()?.id);
 
-			if (!passed.size) return createWebhook(channel);
+			if (!passed.size) return this.createWebhook(interaction, channel);
 
 			interaction.client.registry.create({ channel, url: passed.first()!.url, groupId: null });
 
 			failed.map((e) => e.delete());
 
 			interaction.editReply(`Successfully registered this channel. Now it's ready to connect to any Concord groups.`);
-		} else createWebhook(channel);
+		} else this.createWebhook(interaction, channel);
 
 		return;
+	}
 
-		function createWebhook(channel: RegisterableChannel) {
-			channel
-				.createWebhook('Concord', { reason: `Registeration authorized by ${interaction.user.tag}` })
-				.then(async (webhook) => {
-					webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
-					interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
-				})
-				.catch((_) => interaction.editReply('An error occured.'));
-		}
+	private createWebhook(interaction: ChatInputCommandInteraction, channel: RegisterableChannel) {
+		channel
+			.createWebhook('Concord', { reason: `Registeration authorized by ${interaction.user.tag}` })
+			.then(async (webhook) => {
+				webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
+				interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
+			})
+			.catch((_) => interaction.editReply('An error occured.'));
 	}
 }

@@ -1,14 +1,16 @@
-import type { ChannelResolvable, NewsChannel, TextChannel, UserResolvable } from "discord.js";
-import type { APIMessage } from "discord.js/node_modules/discord-api-types/v10";
-import type { ChannelRegistry, Group } from "../structures/";
-import type { GroupPermissionsFlagBits, GroupStatusType } from "./enums";
+import type { ChannelResolvable, LocaleString, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
+import type { APIMessage } from 'discord.js';
+import type { ChannelRegistry, Group } from '../structures/';
+import type { GroupPermissionsFlagBits, GroupStatusType, RequestState, RequestType } from './enums';
 
+export type Maybe<T> = T | null;
+export type DeepPartial<T> = Partial<{ [P in keyof T]: DeepPartial<T[P]> }>;
 export type CommandAndEventLoadOptions = {
 	errorOnNoMatches?: boolean;
 	errorOnEmptyFile?: boolean;
 };
 
-export type GroupPermissionsString = keyof typeof GroupPermissionsFlagBits
+export type GroupPermissionsString = keyof typeof GroupPermissionsFlagBits;
 
 export type CommandLoadOptions = {
 	path: Partial<{
@@ -33,29 +35,37 @@ export interface APIGroupMessage {
 	url: string;
 	message: APIMessage;
 	group: Group;
-	parentId: [string, string] | [null, null]
-	registry: ChannelRegistry
+	parentId: [string, string] | [null, null];
+	registry: ChannelRegistry;
 }
 
 export interface GroupCreateOptions {
-	name?: string | null;
-	description?: string | null;
+	name?: Maybe<string>;
+	description?: Maybe<string>;
 	owner: UserResolvable;
-	avatar?: string | null;
-	locale?: string | null;
-	banner?: string | null;
+	avatar?: Maybe<string>;
+	locale?: Maybe<string>;
+	banner?: Maybe<string>;
+}
+
+export interface APIGroupRequest {
+	channelId: string;
+	message: Maybe<string>;
+	id: string;
+	type: RequestType;
+	state: RequestState;
 }
 
 export interface APIGroup {
 	appearances: {
-		banner: string | null;
-		avatar: string | null;
-		description: string | null;
-		name: string | null;
+		banner: Maybe<string>;
+		avatar: Maybe<string>;
+		description: Maybe<string>;
+		name: Maybe<string>;
 	};
 	entrance: {
-		password: string | null;
-		requests: any[];
+		password: Maybe<string>;
+		requests: APIGroupRequest[];
 	};
 	status: GroupStatusType;
 	ownerId: string;
@@ -63,21 +73,25 @@ export interface APIGroup {
 		users: string[];
 		channelLimit: number;
 	};
-	locale: string | null;
+	locale: Maybe<LocaleString>;
 	id: string;
 	tag: string;
 	bans: string[];
-	settings: {
-		maxCharacterLimit: number
-	};
-	createdTimestamp: number;
+	settings: GroupSettings
 }
+
+export type GroupSettings = {
+	maxCharacterLimit: number;
+	requests: {
+		deleteDuplicate: boolean;
+	};
+};
 
 export interface APIChannelRegistry {
 	id: string;
-	webhookurl: string | null;
+	webhookurl: Maybe<string>;
 	guildId: string;
-	groupId: string | null;
+	groupId: Maybe<string>;
 }
 
 export type GroupResolvable = string | ChannelRegistry | Group;
@@ -86,6 +100,6 @@ export type RegisterableChannel = TextChannel | NewsChannel;
 
 export type RegistryCreateOptions = {
 	channel: RegisterableChannel;
-	url: string | null;
-	groupId: string | null;
+	url: Maybe<string>;
+	groupId: Maybe<string>;
 };

@@ -1,7 +1,8 @@
 import { EmbedBuilder, EmbedData, Formatters } from 'discord.js';
-import type { APIEmbed } from 'discord.js/node_modules/discord-api-types/v10';
-import { GroupStatusType } from '../../typings/enums';
+import type { APIEmbed } from 'discord.js';
 import type { Group } from './Group';
+import { GroupStatusType } from '../../typings/enums';
+import { isBoolean } from 'lodash';
 
 export class GroupEmbedModal extends EmbedBuilder {
 	private group: Group;
@@ -10,39 +11,43 @@ export class GroupEmbedModal extends EmbedBuilder {
 		this.group = group;
 	}
 
-	public showLocale() {
-		return this.addFields({ name: 'Locale', value: this.group.displayLocale()!, inline: true });
+	public showLocale(isPrivate: boolean = false) {
+		return this.addFields([{ name: 'Locale', value: isPrivate ? 'N/A' : this.group.displayLocale()! , inline: true }]);
 	}
 
-	public showName() {
-		return this.setTitle(this.group.status === GroupStatusType.Private ? 'Unknown' : this.group.displayName());
+	public showName(isPrivate: boolean = false) {
+		return this.setTitle(isPrivate ? 'Unknown' : this.group.displayName());
 	}
 
-	public showOwner() {
-		return this.addFields({
-			name: 'Owner',
-			value: this.group.status !== GroupStatusType.Private ? Formatters.userMention(this.group.ownerId) : 'N/A',
-			inline: true
-		});
+	public showOwner(isPrivate: boolean = false) {
+		return this.addFields([
+			{
+				name: 'Owner',
+				value: isPrivate ? 'N/A' : Formatters.userMention(this.group.ownerId),
+				inline: true
+			}
+		]);
 	}
 
 	public showCreationTime() {
-		return this.addFields({
-			name: 'Created at',
-			value: `<t:${Math.round(this.group.createdTimestamp / 1000)}>`,
-			inline: true
-		});
+		return this.addFields([
+			{
+				name: 'Created at',
+				value: `<t:${Math.round(this.group.createdTimestamp / 1000)}>`,
+				inline: true
+			}
+		]);
 	}
 
-	public showDescription() {
-		return this.setDescription(this.group.status === GroupStatusType.Private ? 'Unable to load description.' : this.group.displayDescription());
+	public showDescription(isPrivate: boolean = false) {
+		return this.setDescription(isPrivate ? 'Unable to load description.' : this.group.displayDescription());
 	}
 
-	public showAvatar() {
-		return this.setThumbnail(this.group.displayAvatarURL());
+	public showAvatar(isPrivate: boolean = false) {
+		return this.setThumbnail(isPrivate ? null : this.group.displayAvatarURL());
 	}
-	public showBanner() {
-		return this.setImage(this.group.displayBannerURL());
+	public showBanner(isPrivate: boolean = false) {
+		return this.setImage(isPrivate ?  null : this.group.displayBannerURL());
 	}
 
 	public showId() {
@@ -52,47 +57,46 @@ export class GroupEmbedModal extends EmbedBuilder {
 	}
 
 	public showTag() {
-		return this.addFields({
-			name: 'Group Tag',
-			value: Formatters.inlineCode('@' + this.group.tag),
-			inline: true
-		});
+		return this.addFields([
+			{
+				name: 'Group Tag',
+				value: Formatters.inlineCode('@' + this.group.tag),
+				inline: true
+			}
+		]);
 	}
 
-	public showMemberCount() {
-		return this.addFields({
-			name: 'Members',
-			value: this.group.status !== GroupStatusType.Private ? `${this.group.channels.cache.size}/${this.group.channelLimit}` : 'N/A',
-			inline: true
-		});
+	public showMemberCount(isPrivate: boolean = false) {
+		return this.addFields([
+			{
+				name: 'Members',
+				value: isPrivate ? 'N/A' : `${this.group.channels.cache.size}/${this.group.channelLimit}`,
+				inline: true
+			}
+		]);
 	}
 
 	public showStatus() {
-		return this.addFields({
-			name: 'Status',
-			value: this.group.status,
-			inline: true
-		});
+		return this.addFields([
+			{
+				name: 'Status',
+				value: this.group.status,
+				inline: true
+			}
+		]);
 	}
 
-	public showMultiple(...propertyArray: GroupEmbedModalProperty[]) {
-		propertyArray.forEach((e) => this[`show${e}`]());
+	public showMultiple(propertyArray: GroupEmbedModalProperty[], isPrivate: Partial<Record<GroupEmbedModalProperty, boolean>> | boolean = {}) {
+		propertyArray.forEach((e) =>
+			this[`show${e}`](isBoolean(isPrivate) ? isPrivate : isPrivate[e] ?? this.group.status === GroupStatusType.Private)
+		);
 		return this;
 	}
 
-	get default() {
+	public default(isPrivate: Partial<Record<GroupEmbedModalProperty, boolean>> | boolean = {}) {
 		return new GroupEmbedModal(this.group).showMultiple(
-			'Avatar',
-			'Banner',
-			'CreationTime',
-			'MemberCount',
-			'Name',
-			'Tag',
-			'Owner',
-			'Id',
-			'Description',
-			'Locale',
-			'Status'
+			['Avatar', 'Banner', 'CreationTime', 'MemberCount', 'Name', 'Tag', 'Owner', 'Id', 'Description', 'Locale', 'Status'],
+			isPrivate
 		);
 	}
 }
@@ -109,5 +113,3 @@ type GroupEmbedModalProperty =
 	| 'Status'
 	| 'Locale'
 	| 'CreationTime';
-
-	

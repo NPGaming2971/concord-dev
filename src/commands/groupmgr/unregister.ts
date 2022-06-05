@@ -1,5 +1,9 @@
-import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
-import { Command } from '../../structures/';
+import { fromAsync, isOk } from '@sapphire/result';
+import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction, DiscordAPIError } from 'discord.js';
+import { ChannelRegistry, Command, ResponseFormatters } from '../../structures/';
+import { Constants } from '../../typings/constants';
+import { Util } from '../../utils';
+const { prepareError, appendEmojiToString } = ResponseFormatters;
 
 export class UnregisterCommand extends Command {
 	constructor() {
@@ -32,22 +36,48 @@ export class UnregisterCommand extends Command {
 		await interaction.deferReply();
 		const registry = channel.fetchRegistry();
 
-		if (!registry) return interaction.editReply(`No record of my webhook found in ${channel}.`);
+		if (!registry) return interaction.editReply(appendEmojiToString(Constants.Emojis.Failure, `This channel wasn't registered before`));
 
-		if (registry.isRegistered()) {
-			try {
-				const webhook = await registry.fetchWebhook();
+		const options = {
+			content: appendEmojiToString(
+				Constants.Emojis.Warning,
+				`Are you sure you want to unregister this channel?\n${registry.groupId ? `This will also make you leave ${registry.group}!` : ''}`
+			)
+		};
+		const defaultOptions = {
+			embeds: [],
+			components: []
+		};
+		Util.startPrompt(
+			interaction,
+			options,
+			async (i) => {
+				const result = await fromAsync<void, DiscordAPIError>(this.unregister(registry));
 
-				webhook.delete().catch(() => {
-					return interaction.editReply('Err');
+				if (!isOk(result)) {
+					return i.update(prepareError(result.error));
+				}
+
+				return i.update({
+					content: appendEmojiToString(Constants.Emojis.Success, `Successfully unregistered this channel.`),
+					...defaultOptions
 				});
-			} catch (err) {
-				console.log(err);
+			},
+			(i) => {
+				i.update({ content: appendEmojiToString(Constants.Emojis.Success, 'Action cancelled.'), ...defaultOptions });
 			}
-		}
-		registry.delete();
-		interaction.editReply('Success');
+		);
 
 		return;
+	}
+
+	public async unregister(registry: ChannelRegistry) {
+		if (registry.isRegistered()) {
+			const webhook = await registry.fetchWebhook();
+
+			await webhook.delete().catch((err) => err);
+		}
+
+		registry.delete();
 	}
 }

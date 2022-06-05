@@ -1,11 +1,9 @@
-export enum Error {
-	NO_TYPE_SPECIFIED = 'You did not specify application command type.',
-	PRECONDITION_VALIDATION_FAILED = 'Preconditions are not met.',
-	ELEVATED_PERMISSION_REQUIRED = 'Access denied.',
-	MISSING_USER_PERMISSIONS = 'You do not have the required permissions to execute this command. Expected permissions: {{ permissions }}',
-	MISSING_CLIENT_PERMISSIONS = 'I do not have the required permissions to execute this command. Expected permissions: {{ permissions }}',
-	CHANNEL_TYPE_PRECONDITIONS_FAILED = 'You can not use this command in this channel. Expected channel types: {{ channelTypes }}',
-	DISALLOWED_LOCATION = 'You can not use this command in this channel/guild.'
+export enum Events {
+	GroupMemberAdd = 'groupMemberAdd',
+	GroupMemberRemove = 'groupMemberRemove',
+	GroupCreate = 'groupCreate',
+	GroupDelete = 'groupDelete',
+	GroupUpdate = 'groupUpdate',
 }
 
 export declare const GroupPermissionsFlagBits: {
@@ -21,6 +19,16 @@ export declare const GroupPermissionsFlagBits: {
 	readonly BanMembers: bigint;
 	readonly ManageMessages: bigint;
 };
+
+export enum RequestType {
+	Connect = 'Connect'
+}
+
+export enum RequestState {
+	Pending = 'Pending',
+	Accepted = 'Accepted',
+	Denied = 'Denied'
+}
 
 export enum GroupStatusType {
 	Public = 'public',

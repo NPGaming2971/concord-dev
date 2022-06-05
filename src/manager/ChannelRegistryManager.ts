@@ -22,7 +22,7 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 			if (existing) return existing;
 		}
 
-		const { getRegistry } = this.client.statements;
+		const { getRegistry } = this.client.database.statements;
 
 		const data: APIChannelRegistry | undefined = getRegistry.get(id);
 
@@ -31,13 +31,12 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 			return null;
 		}
 
-		//@ts-expect-error
 		return this._add(data, cache, { id: id, extras: [] });
 	}
 
 	delete(channel: ChannelResolvable) {
 		const id = this.client.channels.resolveId(channel);
-		const { deleteRegistry } = this.client.statements;
+		const { deleteRegistry } = this.client.database.statements;
 
 		const registry = this.cache.get(id);
 		registry?.group?.channels.kick(id);
@@ -51,7 +50,7 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		const { channel, url, groupId } = options;
 		const { id, guildId } = this.client.channels.resolve(channel) as RegisterableChannel;
 
-		const { createRegistry } = this.client.statements;
+		const { createRegistry } = this.client.database.statements;
 
 		const data = {
 			id: id,
@@ -66,7 +65,6 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		if (this.cache.has(id)) {
 			return this.cache.get(id)!._patch(data);
 		} else {
-			//@ts-expect-error
 			return this._add(data, true, { id: id, extras: [] });
 		}
 	}

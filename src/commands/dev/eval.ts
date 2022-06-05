@@ -52,7 +52,7 @@ export class EvalCommand extends Command {
 			.setStyle(TextInputStyle.Paragraph);
 
 		const codeModal = new ModalBuilder()
-			.setComponents(new ActionRowBuilder<TextInputBuilder>().setComponents(textField))
+			.setComponents([new ActionRowBuilder<TextInputBuilder>().setComponents([textField])])
 			.setTitle('Concord: Eval')
 			.setCustomId(`concord:eval/${id}`);
 
@@ -95,7 +95,7 @@ export class EvalCommand extends Command {
 				} else {
 					const embed = new EmbedBuilder()
 						.setDescription(`📤 **Output**\n${Formatters.codeBlock('js', clean(evaled))}`)
-						.addFields(
+						.addFields([
 							{
 								name: 'Input',
 								value: Formatters.codeBlock('js', codeString)
@@ -110,7 +110,7 @@ export class EvalCommand extends Command {
 								value: `${executionEnd - executionStart}ms`,
 								inline: true
 							}
-						)
+						])
 						.setColor(Constants.DefaultColor);
 					modalInteraction.editReply({
 						embeds: [embed]
@@ -119,10 +119,10 @@ export class EvalCommand extends Command {
 			} catch (error: any) {
 				modalInteraction.editReply({
 					embeds: [
-						new EmbedBuilder().setDescription(`⚠ **Error**\n${Formatters.codeBlock('js', error.stack)}`).addFields({
+						new EmbedBuilder().setDescription(`⚠ **Error**\n${Formatters.codeBlock('js', error.stack)}`).addFields([{
 							name: 'Input',
 							value: Formatters.codeBlock('js', codeString)
-						})
+						}])
 					]
 				});
 			}

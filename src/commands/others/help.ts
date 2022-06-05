@@ -76,12 +76,12 @@ function renderCommandEmbed(command: Command) {
 	return new EmbedBuilder()
 		.setTitle(name)
 		.setDescription(description)
-		.addFields({
+		.addFields([{
 			name: "Syntax",
 			value: `/${name} ${
 				options
 					?.map((e) => `{${e.name}: ${ApplicationCommandOptionType[e.type]}}`)
 					.join(" ") ?? ""
 			}`,
-		});
+		}]);
 }

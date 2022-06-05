@@ -9,8 +9,8 @@ import {
 	WebhookClient
 } from 'discord.js';
 import fetch from 'node-fetch';
+import { Constants } from '../typings/constants';
 import type { Pagination } from './Pagination';
-
 
 export class Util {
 	private static Buttons = {
@@ -22,22 +22,22 @@ export class Util {
 	};
 
 	public static getProperty(object: any, prop: string) {
-		if (typeof object !== 'object') throw 'getProp: obj is not an object'
-		if (typeof prop !== 'string') throw 'getProp: prop is not a string'
-	
-		prop = prop.replace(/\[["'`](.*)["'`]\]/g,".$1")
-	
-		return prop.split('.').reduce(function(prev, curr) {
-			return prev ? prev[curr] : undefined
-		}, object || self)
+		if (typeof object !== 'object') throw 'getProperty: obj is not an object';
+		if (typeof prop !== 'string') throw 'getProperty: prop is not a string';
+
+		prop = prop.replace(/\[["'`](.*)["'`]\]/g, '.$1');
+
+		return prop.split('.').reduce(function (prev, curr) {
+			return prev ? prev[curr] : undefined;
+		}, object || self);
 	}
 
 	public static get pagiationRow() {
 		const { first, prev, index, next, last } = this.Buttons;
 
-		return new ActionRowBuilder<ButtonBuilder>().setComponents(first, prev, index, next, last);
+		return new ActionRowBuilder<ButtonBuilder>().setComponents([first, prev, index, next, last]);
 	}
-	
+
 	public static renderRow<T>(pagination: Pagination<T>) {
 		const { first, prev, next, last } = this.Buttons;
 		const disablePrev = pagination.currentIndex === 0;
@@ -49,7 +49,7 @@ export class Util {
 
 	static updateIndex(pagination: Pagination<any>) {
 		this.Buttons.index.setLabel(pagination.getIndex().join('/'));
-	};
+	}
 
 	static handlePagination<T>(interaction: ButtonInteraction, pagination: Pagination<T>) {
 		switch (interaction.customId) {
@@ -157,42 +157,31 @@ export class Util {
 	static async startPrompt(
 		interaction: ChatInputCommandInteraction<'cached'>,
 		options: InteractionReplyOptions,
-		handler: { allow: () => any; deny: () => any }
+		allow: (i: ButtonInteraction) => any,
+		deny: (i: ButtonInteraction) => any
 	) {
 		const buttons = {
 			confirm: new ButtonBuilder().setCustomId('concord:startPrompt/confirm').setLabel('Confirm').setStyle(ButtonStyle.Success),
 			cancel: new ButtonBuilder().setCustomId('concord:startPrompt/cancel').setLabel('Cancel').setStyle(ButtonStyle.Danger)
 		};
 
-		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.confirm, buttons.cancel);
+		const row = new ActionRowBuilder<ButtonBuilder>().addComponents([buttons.confirm, buttons.cancel]);
 
 		const message = await interaction[interaction.replied ? 'followUp' : 'editReply']({
 			...options,
-			components: [...((options.components as any[]) ?? []), row],
+			components: [...(options.components ?? []), row],
 			fetchReply: true
 		});
 
-		const filter = async (i: ButtonInteraction) => {
-			await i.deferUpdate();
-			if (i.user.id === interaction.user.id) return true;
-			else {
-				i.followUp({
-					content: 'This is not your menu,',
-					ephemeral: true
-				});
-				return false;
-			}
-		};
-
 		message
-			.awaitMessageComponent({ filter, componentType: ComponentType.Button, idle: 15000 })
+			.awaitMessageComponent({ filter: Constants.BaseFilter(interaction), componentType: ComponentType.Button, idle: 15000 })
 			.then((i) => {
 				switch (i.customId) {
 					case 'concord:startPrompt/confirm':
-						handler.allow();
+						allow(i);
 						break;
 					case 'concord:startPrompt/cancel':
-						handler.deny();
+						deny(i);
 						break;
 				}
 			})
@@ -200,7 +189,7 @@ export class Util {
 				message.edit({
 					components: [],
 					embeds: [],
-					content: 'No response received. Action was automatically cancelled.'
+					content: 'No response received. Action cancelled.'
 				});
 			});
 	}
@@ -211,6 +200,7 @@ export class Util {
 			console.log(buff.type);
 			return buff.type.startsWith('image/');
 		} catch (err) {
+			console.log(err);
 			return false;
 		}
 	}

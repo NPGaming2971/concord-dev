@@ -1,4 +1,4 @@
-import { EmbedBuilder } from '@discordjs/builders';
+import { EmbedBuilder } from 'discord.js';
 import type { ChatInputCommandInteraction } from 'discord.js';
 import { Command } from '../../structures/';
 import { Constants } from '../../typings/constants';
@@ -17,7 +17,7 @@ export class PingCommand extends Command {
 		const embed = new EmbedBuilder()
 			.setTitle('Pong!')
 			.setColor(Constants.DefaultColor)
-			.addFields(
+			.addFields([
 				{
 					name: 'Latency Ping',
 					value: `${websocketPing}ms`,
@@ -28,7 +28,7 @@ export class PingCommand extends Command {
 					value: `${userPing}ms`,
 					inline: true
 				}
-			);
+			]);
 		interaction.editReply({ embeds: [embed] });
 	}
 }

@@ -15,7 +15,7 @@ const Buttons = {
 export class ConditionHandler {
 	static async handleExceedingLength(message: Message, group: Group, registry: ChannelRegistry) {
 		const buttonsRow = new ActionRowBuilder<ButtonBuilder>().setComponents(
-			...Object.values(pick(Buttons, ['sendAsFile', 'cutDownContent', 'doNothing']))
+			Object.values(pick(Buttons, ['sendAsFile', 'cutDownContent', 'doNothing']))
 		);
 
 		const msg = await message.reply({

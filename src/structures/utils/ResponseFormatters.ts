@@ -1,14 +1,13 @@
 import { CDN } from '@discordjs/rest';
 import { Attachment, EmbedBuilder, Formatters, GuildChannel, Message, MessageMentions, Sticker, WebhookMessageOptions } from 'discord.js';
-import { Routes } from 'discord.js/node_modules/discord-api-types/v10';
+import { Routes } from 'discord.js';
 import { Constants } from '../../typings/constants';
-import { Error } from '../../typings/enums';
 import { Util } from '../../utils/';
 
 export class ResponseFormatters {
-	public static prepareError(errorId: keyof typeof Error, template?: { [key: string]: string }) {
+	public static prepareError(error: Error) {
 		return {
-			content: template ? Util.stringTemplateParser(`\`❌\` [${errorId}]\n${Error[errorId]}`, template) : `\`❌\` ${Error[errorId]}`,
+			content: `\`❌\` **${error.name}**\n${error.message}`,
 			ephemeral: true
 		};
 	}
@@ -66,6 +65,10 @@ export class ResponseFormatters {
 		return (
 			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent} ${icon}\n\u200b\n${message.content}`
 		);
+	}
+
+	static appendEmojiToString(emoji: string, string: string) {
+		return `\`${emoji}\` ${string}`
 	}
 
 	static async renderMessage(message: Message): Promise<WebhookMessageOptions> {

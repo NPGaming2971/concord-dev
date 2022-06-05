@@ -129,7 +129,7 @@ export class CreateCommand extends Command {
 			return interaction.editReply('No result was found. Did you apply too many filters?');
 		}
 		const pagination = new Pagination<EmbedBuilder>({
-			pages: initial.map((i) => new GroupEmbedModal(i).showMultiple('Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag')),
+			pages: initial.map((i) => new GroupEmbedModal(i).showMultiple(['Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag'], !(i.ownerId === interaction.user.id))),
 			groupBy: 3
 		});
 

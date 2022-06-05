@@ -1,30 +1,34 @@
 export class Converters {
-	static camelCaseKeysToUnderscore(obj: any): any {
-		if (typeof obj != "object") return obj;
+	static camelCaseKeysToUnderscore(object: any): any {
+		if (typeof object != 'object') return object;
 		let newName;
-		for (const oldName in obj) {
+		for (const oldName in object) {
 			newName = oldName.replace(/([A-Z])/g, function ($1) {
-				return "_" + $1.toLowerCase();
+				return '_' + $1.toLowerCase();
 			});
 
 			if (newName != oldName) {
-				if (obj.hasOwnProperty(oldName)) {
-					obj[newName] = obj[oldName];
-					delete obj[oldName];
+				if (object.hasOwnProperty(oldName)) {
+					object[newName] = object[oldName];
+					delete object[oldName];
 				}
 			}
 
-			if (typeof obj[newName] == "object") {
-				obj[newName] = this.camelCaseKeysToUnderscore(obj[newName]);
+			if (typeof object[newName] == 'object') {
+				object[newName] = this.camelCaseKeysToUnderscore(object[newName]);
 			}
 		}
-		return obj;
+		return object;
 	}
 
-	static stringTemplateParser(
-		expression: string,
-		valueObj: { [key: string]: string }
-	) {
+	static parseString(value: string) {
+		const number = Number(value);
+
+		if (isNaN(number)) return undefined;
+		return number;
+	}
+
+	static stringTemplateParser(expression: string, valueObj: { [key: string]: string }) {
 		const templateMatcher = /{{\s?([^{}\s]*)\s?}}/g;
 		let text = expression.replace(templateMatcher, (_, value, __) => {
 			value = valueObj[value];
@@ -35,6 +39,6 @@ export class Converters {
 
 	static splitPascalCase(word: string) {
 		var wordRe = /($[a-z])|[A-Z][^A-Z]+/g;
-		return word.match(wordRe)?.join(" ");
+		return word.match(wordRe)?.join(' ');
 	}
 }

@@ -9,9 +9,7 @@ import { join, basename, normalize } from 'node:path';
 import { Util } from '../utils/';
 import { Routes } from 'discord-api-types/v10';
 import { Constants } from '../typings/constants';
-import type { Listener, Command } from '../structures/';
-import { DatabaseUtil } from '../utils/DatabaseUtil';
-import { ConcordError } from '../structures/';
+import { Error, type Listener, Command } from '../structures/';
 
 const globPromise = promisify(glob);
 let firstRun = true;
@@ -20,14 +18,12 @@ export class CommandManager extends BaseManager {
 	public readonly cache = new LimitedCollection<string, Command>({
 		maxSize: 100,
 		keepOverLimit: () => {
-			throw new Error('Maximum number of slash commands reached (100).');
+			throw new Error('APPLICATION_COMMAND_LIMIT');
 		}
 	});
 
 	constructor(client: Client) {
 		super(client);
-
-		DatabaseUtil.init(client);
 	}
 
 	private handlePathOption(path: string, option?: CommandLoadOptions['options']) {
@@ -72,7 +68,7 @@ export class CommandManager extends BaseManager {
 
 	public deploy() {
 		//Preconditions: CommandManager.cache is populated
-		if (!this.cache.size) throw new Error('CommandManager.prototype.cache is empty.');
+		if (!this.cache.size) throw new Error(`EMPTY_RESOURCE`, 'CommandManager.prototype.cache');
 
 		const rest = new REST({ version: '10' }).setToken(process.env.TOKEN!);
 		const clientId = Constants.ClientId;
@@ -136,7 +132,7 @@ export class CommandManager extends BaseManager {
 		const files = await globPromise(globPattern);
 
 		if (!files.length && options?.errorOnNoMatches) {
-			throw new Error('Specified pattern has no matches.');
+			throw new Error('NO_MATCHES', globPattern);
 		}
 
 		for (const file of files) {
@@ -146,7 +142,7 @@ export class CommandManager extends BaseManager {
 			if (typeof command === 'undefined') {
 				if (!options?.errorOnEmptyFile) {
 					continue;
-				} else throw new ConcordError('EMPTY_COMMAND_FILE', basename(file));
+				} else throw new Error('EMPTY_COMMAND_FILE', basename(file));
 			}
 			const constructedCommand = Reflect.construct(command, []) as Command;
 
@@ -162,7 +158,7 @@ export class CommandManager extends BaseManager {
 		const files = await globPromise(globPattern);
 
 		if (!files.length && options?.errorOnNoMatches) {
-			throw new Error('Specified pattern has no matches.');
+			throw new Error('NO_MATCHES', globPattern);
 		}
 
 		for (const file of files) {
@@ -179,7 +175,7 @@ export class CommandManager extends BaseManager {
 	}
 
 	private loadToCache(data: Command) {
-		if (this.cache.has(data.data.name) && firstRun) throw new Error(`Duplicated comamnd detected: Command '${data.data.name}' already exists.`);
+		if (this.cache.has(data.data.name) && firstRun) throw new Error('DUPLICATED_RESOURCE', Command.name, data.data.name, this.cache.constructor.name);
 		this.cache.set(data.data.name, data);
 	}
 
