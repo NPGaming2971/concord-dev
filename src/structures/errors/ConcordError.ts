@@ -18,13 +18,14 @@ const Messages = {
 		`You can not use this command in this channel. Expected channel types: ${channelTypes}`,
 	DISALLOWED_LOCATION: (type: 'channel' | 'guild') => `You can not use this command in this ${type}.`,
 
-	EMPTY_COMMAND_FILE: (name: string) => `The file ${name} has no exported structure.`,
-	EMPTY_RESOURCE: (name: string) => `${name} exists but is empty.`,
-	NON_EXISTENT_RESOURCE: (type: string, name: string, location?: string) => `${upperFirst(type)} '${name}' does not exist in ${location ? ` in ${location}` : ''}.`,
-	DUPLICATED_RESOURCE: (type: string, name: string,  location?: string) => `${upperFirst(type)} '${name}' already existed${location ? ` in ${location}` : ''}.`,
-	
+	EMPTY_RESOURCE: (type: string, name: string) => `${type} ${name} exists but is empty.`,
+	NON_EXISTENT_RESOURCE: (type: string, name: string, location?: string) =>
+		`${upperFirst(type)} '${name}' does not exist${location ? ` in ${location}` : ''}.`,
+	DUPLICATED_RESOURCE: (type: string, name: string, location?: string) =>
+		`${upperFirst(type)} '${name}' already existed${location ? ` in ${location}` : ''}.`,
+
 	GROUP_CHANNEL_LIMIT: (groupName: string, limit: string | number) => `Maximum number of channels of group '${groupName}' reached (${limit}).`,
- 
+
 	CHANNEL_UNREGISTERED: (channel: Channel) => `Channel '${channel.id}' is not registered.`,
 	THIS_MESSAGE_IS_ORPHANED: "This message doesn't have a parent id.",
 	NO_MATCHES: (pattern: string) => `Pattern '${pattern}' has no matches.'`,
@@ -36,7 +37,6 @@ type ErrorKey = keyof typeof Messages;
 
 export function makeError(Base: Constructable<Error>) {
 	return class ConcordError<K extends ErrorKey> extends Base {
-		
 		public [kCode]: K;
 
 		constructor(key: K, ...args: typeof Messages[K] extends string ? never : Parameters<Exclude<typeof Messages[K], string>>) {

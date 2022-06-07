@@ -1,10 +1,13 @@
-import { type Interaction, Message, MessageComponentInteraction } from 'discord.js';
+import { type Interaction, Message, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
 
 export const Constants = {
 	ClientId: '905467890982084638',
 	DefaultColor: 0x5e92cc,
 	DevelopmentGuildId: ['755892553827483799', '847874027149721680'],
 	Administrators: ['792645340632317992'],
+	BaseModalFilter: (interaction: Interaction<'cached'>, customId: string) => {
+		return (m: ModalSubmitInteraction) => m.user.id === interaction.user.id && m.customId === customId;
+	},
 	BaseFilter: (context: Interaction<'cached'> | Message) => async (i: MessageComponentInteraction) => {
 
         let authorId = context instanceof Message ? context.author.id : context.user.id

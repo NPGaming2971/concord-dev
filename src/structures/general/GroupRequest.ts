@@ -1,8 +1,11 @@
 import { Base, Client, SnowflakeUtil } from 'discord.js';
 import type { APIGroupRequest, RegisterableChannel } from '../../typings';
 import { RequestState, RequestType } from '../../typings/enums';
+import { Error } from '../errors/ConcordError';
+import { ChannelRegistry } from './ChannelRegistry';
 
 export interface GroupRequest {
+	data: APIGroupRequest
 	id: string;
 	channelId: string;
 	message: string | null;
@@ -15,14 +18,23 @@ export class GroupRequest extends Base {
 	constructor(client: Client, data: APIGroupRequest, groupId: string) {
 		super(client);
 
+		this.data = data
 		this.groupId = groupId
 		this.patch(data);
+	}
+
+	public override toJSON() {
+		return { ...this.data }
 	}
 
 	public get targetGroup() {
 		return this.client.groups.fetch(this.groupId)!
 	}
 
+	public get registry() {
+		return this.channel.fetchRegistry()
+	}
+ 
 	public patch(data: Partial<APIGroupRequest>) {
 		if (data.id) this.id = data.id;
 
@@ -70,6 +82,11 @@ export class GroupRequest extends Base {
 
 		switch (this.type) {
 			case RequestType.Connect:
+
+				if (!this.registry) throw new Error('NON_EXISTENT_RESOURCE', ChannelRegistry.name, this.channelId)
+
+				if (this.registry.groupId) throw new Error('DUPLICATED_RESOURCE', 'Property', 'groupId', `registry '${this.channelId}'`)
+
 				this.targetGroup.channels.add(this.channelId);
 				this.setState(state);
 		}

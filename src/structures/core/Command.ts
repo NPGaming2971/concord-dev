@@ -20,7 +20,7 @@ export abstract class Command {
 	public readonly data: CommandConstructor['data'];
 	public cooldowns = new Collection<string, number>();
 	public path?: string;
-	private readonly restraints?: CommandConstructor['restraints'];
+	public readonly restraints?: CommandConstructor['restraints'];
 	public readonly preconditions?: CommandConstructor['preconditions'];
 
 	constructor(data: CommandConstructor) {

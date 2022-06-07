@@ -1,10 +1,11 @@
 import {
+	ActionRowBuilder,
 	ApplicationCommandOptionType,
 	AutocompleteInteraction,
+	ButtonBuilder,
+	ButtonStyle,
 	ChatInputCommandInteraction,
-	ComponentType,
-	Locale,
-	type EmbedBuilder
+	Locale
 } from 'discord.js';
 import { Command, GroupEmbedModal } from '../../structures/';
 import Fuse from 'fuse.js';
@@ -12,6 +13,8 @@ import { Pagination } from '../../utils/Pagination';
 import { Constants } from '../../typings/constants';
 import { sampleSize } from 'lodash';
 import { Util } from '../../utils';
+import { SelectMenuBuilder } from '@discordjs/builders';
+import { GroupStatusType } from '../../typings/enums';
 
 export class CreateCommand extends Command {
 	constructor() {
@@ -91,17 +94,17 @@ export class CreateCommand extends Command {
 
 		const { query, locale, status, range } = queryingOptions;
 
-		let initial = interaction.client.groups.cache.toJSON();
+		let result = interaction.client.groups.cache.toJSON();
 
 		if (status) {
-			initial = initial.filter((e) => e.status === status);
+			result = result.filter((e) => e.status === status);
 		}
 
 		if (locale) {
-			initial = initial.filter((e) => e.locale === locale);
+			result = result.filter((e) => e.locale === locale);
 		}
 
-		initial = initial.filter((e) => {
+		result = result.filter((e) => {
 			const number = e.channels.cache.size;
 			const arr = range.split('-').map((i) => Number(i));
 			if (arr.length < 2) {
@@ -114,40 +117,86 @@ export class CreateCommand extends Command {
 		});
 
 		if (query) {
-			const fuse = new Fuse(initial, {
+			const fuse = new Fuse(result, {
 				keys: ['tag'],
 				includeScore: true
 			});
 			const results = fuse.search(query);
 
-			initial = results.map(i => i.item);
+			result = results.map((i) => i.item);
 		} else {
-			initial = sampleSize(initial, queryingOptions.limit);
+			result = sampleSize(result, queryingOptions.limit);
 		}
 
-		if (!initial.length) {
+		if (!result.length) {
 			return interaction.editReply('No result was found. Did you apply too many filters?');
 		}
-		const pagination = new Pagination<EmbedBuilder>({
-			pages: initial.map((i) => new GroupEmbedModal(i).showMultiple(['Avatar', 'Banner', 'MemberCount', 'Description', 'Name', 'Status', 'Tag'], !(i.ownerId === interaction.user.id))),
+		const pagination = new Pagination<GroupEmbedModal>({
+			pages: result.map((i) =>
+				new GroupEmbedModal(i).showMultiple(
+					['Avatar', 'MemberCount', 'Description', 'Name', 'Status', 'Tag'],
+					i.status === GroupStatusType.Private && !(i.ownerId === interaction.user.id)
+				)
+			),
 			groupBy: 3
 		});
 
+		const resultString = `${result.length} result${result.length === 1 ? '' : 's'} found.`;
+
 		const message = await interaction.editReply({
-			content: `${initial.length} results found.`,
+			content: resultString,
 			embeds: pagination.getPage(0),
-			components: [Util.pagiationRow]
+			components: [this.renderGroupSelectMenu(pagination), Util.pagiationRow]
 		});
 
 		const collector = message.createMessageComponentCollector({
 			filter: Constants.BaseFilter(interaction),
-			componentType: ComponentType.Button,
-			idle: 15000
+			idle: 20000
 		});
 
-		collector.on('collect', (i) => Util.handlePagination(i, pagination));
+		collector.on('collect', (i) => {
+			if (i.isSelectMenu()) {
+				if (i.customId !== 'concord:search/select') return;
+
+				const groupId = i.values[0];
+				const group = i.client.groups.fetch(groupId)!;
+				const backButton = new ButtonBuilder().setCustomId('concord:search/back').setLabel('Back').setStyle(ButtonStyle.Secondary);
+
+				i.update({
+					content: null,
+					embeds: [new GroupEmbedModal(group).default(group.status === GroupStatusType.Private && !(group.ownerId === interaction.user.id))],
+					components: [new ActionRowBuilder<ButtonBuilder>().setComponents([backButton])]
+				});
+			}
+
+			if (i.isButton()) {
+				
+				if (i.customId === 'concord:search/back') {
+					i.update({
+						content: resultString,
+						components: [this.renderGroupSelectMenu(pagination), Util.pagiationRow],
+						embeds: pagination.getCurrentPage()
+					});
+					return
+				}
+				Util.handlePagination(i, pagination, (p) => ({ components: [this.renderGroupSelectMenu(p), Util.pagiationRow]}));
+			}
+		});
 
 		return;
+	}
+
+	private renderGroupSelectMenu(pagination: Pagination<GroupEmbedModal>) {
+		const currPage = pagination.getCurrentPage();
+
+		return new ActionRowBuilder<SelectMenuBuilder>().setComponents([
+			new SelectMenuBuilder()
+				.setOptions(currPage.map(i => ({ label: `${i.data.title! ?? 'Unnamed'} (@${i.group.tag})`, value: i.group.id })))
+				.setCustomId('concord:search/select')
+				.setMaxValues(1)
+				.setMinValues(1)
+				.setPlaceholder('Choose a group to view its info.')
+		]);
 	}
 
 	public override async autocompleteRun(interaction: AutocompleteInteraction) {

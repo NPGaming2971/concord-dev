@@ -1,11 +1,11 @@
-import { BaseFetchOptions, CachedManager, ChannelResolvable, Client } from 'discord.js';
+import { BaseFetchOptions, CachedManager, ChannelResolvable, Client, NewsChannel, TextChannel } from 'discord.js';
 import { ChannelRegistry } from '../structures/';
 import type { APIChannelRegistry, RegisterableChannel, RegistryCreateOptions } from '../typings';
 
 // Reduce database workload. Block unregistered channel.
 const Blocker = new Set<string>();
 
-type ChannelRegistryResolvable = string | RegisterableChannel;
+export type ChannelRegistryResolvable = string | RegisterableChannel | ChannelRegistry;
 
 export class ChannelRegistryManager extends CachedManager<string, ChannelRegistry, ChannelRegistryResolvable> {
 	constructor(client: Client) {
@@ -72,5 +72,20 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		const bool = this.fetch(channel) !== null;
 		Blocker[bool ? 'delete' : 'add'](this.client.channels.resolveId(channel));
 		return bool;
+	}
+
+	public override resolveId(resolvable: string | ChannelRegistry<boolean>): string;
+	public override resolveId(resolvable: ChannelRegistryResolvable): string | null;
+	public override resolveId(registry: any): string | null {
+
+		if (registry instanceof this.holds) {
+			return registry.channelId
+		}
+
+		if (registry instanceof TextChannel || registry instanceof NewsChannel) {
+			return super.resolveId(registry);
+		}
+		
+		return super.resolveId(registry)
 	}
 }

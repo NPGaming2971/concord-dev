@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, GatewayIntentBits, Options, Partials } from 'discord.js';
 import { CommandManager } from '../manager/CommandManager';
 import { Enumerable } from '../utils/decorators';
 import { Logger } from './Logger';
@@ -35,10 +35,18 @@ export class ConcordClient extends Client<true> {
 				GatewayIntentBits.Guilds,
 				GatewayIntentBits.GuildMessages,
 				GatewayIntentBits.GuildWebhooks,
-				GatewayIntentBits.GuildMessageTyping,
-				GatewayIntentBits.MessageContent
+				GatewayIntentBits.MessageContent,
+				GatewayIntentBits.GuildMessageReactions
 			],
 			partials: [Partials.User, Partials.GuildMember, Partials.Message],
+			makeCache: Options.cacheWithLimits({
+				...Options.DefaultMakeCacheSettings,
+				PresenceManager: 0,
+				ThreadManager: 0,
+				ThreadMemberManager: 0,
+				GuildEmojiManager: 0,
+				GuildScheduledEventManager: 0
+			})
 		});
 		this.commands.load({
 			path: {

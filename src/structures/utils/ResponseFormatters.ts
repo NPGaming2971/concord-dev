@@ -3,6 +3,7 @@ import { Attachment, EmbedBuilder, Formatters, GuildChannel, Message, MessageMen
 import { Routes } from 'discord.js';
 import { Constants } from '../../typings/constants';
 import { Util } from '../../utils/';
+import type { GroupRequest } from '../general/GroupRequest';
 
 export class ResponseFormatters {
 	public static prepareError(error: Error) {
@@ -23,6 +24,26 @@ export class ResponseFormatters {
 				.setDescription(Util.sizeOf(att.size))
 				.setThumbnail(icon);
 		}
+	}
+
+	public static renderRequest(request: GroupRequest) {
+		return new EmbedBuilder().setFields(
+			[{
+				name: 'Channel',
+				value: Formatters.inlineCode(`#${request.channel.name}`),
+				inline: true
+			}, {
+				name: 'Guild',
+				value: request.channel.guild.name,
+				inline: true
+			}, {
+				name: 'Type',
+				value: request.type
+			}, {
+				name: 'Message',
+				value: request.message ?? 'No message provided.'
+			}]	
+		).setTitle('Group Request')
 	}
 
 	public static formatSticker(sticker: Sticker) {
@@ -54,7 +75,7 @@ export class ResponseFormatters {
 	public static parseReply(message: Message, reference: Message) {
 		const baseURL = 'https://discord.com';
 
-		const icon = reference.embeds.length || reference.attachments.size ? Formatters.formatEmoji(Constants.Emojis.Image) : ''
+		const icon = (reference.embeds.length || reference.attachments.size) ? Formatters.formatEmoji(Constants.Emojis.Image) : ''
 
 		let replyContent = ResponseFormatters.parseMentions(reference)
 			.substring(0, 64)
@@ -63,7 +84,7 @@ export class ResponseFormatters {
 		if (reference.content.startsWith('Replying to') && reference.webhookId)
 			replyContent = replyContent.substring(replyContent.indexOf('\u200B') + 1);
 		return (
-			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent} ${icon}\n\u200b\n${message.content}`
+			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent}${replyContent.length > 64 ? '...' : ''} ${icon}\n\u200b\n${message.content}`
 		);
 	}
 

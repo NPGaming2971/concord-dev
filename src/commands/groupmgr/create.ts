@@ -10,7 +10,7 @@ export class CreateCommand extends Command {
 				options: [
 					{
 						name: 'tag',
-						description: 'tag',
+						description: 'The tag of your new group.',
 						type: ApplicationCommandOptionType.String,
 						required: true
 					}

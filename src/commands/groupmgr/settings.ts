@@ -8,7 +8,6 @@ import {
 	ActionRowBuilder,
 	Formatters,
 	MessageComponentInteraction,
-	ModalSubmitInteraction,
 	TextInputStyle,
 	ModalBuilder,
 	TextInputBuilder,
@@ -19,7 +18,8 @@ import { Command, Error, Group, ResponseFormatters } from '../../structures/';
 import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
 import { Util } from '../../utils/';
-import { isOk } from '@sapphire/result';
+import { fromAsync, isOk } from '@sapphire/result';
+import { Constants } from '../../typings/constants';
 export class SettingsCommand extends Command {
 	constructor() {
 		super({
@@ -56,7 +56,7 @@ export class SettingsCommand extends Command {
 
 		const option = Settings.find((i) => i.path === inputOptionName);
 
-		if (!option) return interaction.editReply('No such option.');
+		if (!option) return interaction.reply('No such option.');
 
 		const hidden = (option.isString() && option.hidden) || ephemeral;
 
@@ -105,8 +105,6 @@ export class SettingsCommand extends Command {
 					if (i.customId === 'settings/setNewValue') {
 						if (!option.isString()) return;
 
-						const filter = (m: ModalSubmitInteraction) => m.user.id === i.user.id && m.customId === `concord:settings/${i.id}`;
-
 						const [min, max] = option.restraints?.lengthRange ?? [0, 4000];
 						const textField = new TextInputBuilder()
 							.setCustomId(`textInput`)
@@ -115,7 +113,8 @@ export class SettingsCommand extends Command {
 							.setMinLength(min ?? 0)
 							.setMaxLength(max ?? 4000)
 							.setValue(groupData[option.path] ?? '')
-							.setRequired(true);
+							.setRequired(true)
+							;
 
 						const modal = new ModalBuilder()
 							.setComponents([new ActionRowBuilder<TextInputBuilder>().setComponents([textField])])
@@ -124,19 +123,21 @@ export class SettingsCommand extends Command {
 
 						i.showModal(modal);
 
-						try {
-							const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter });
+						const modalInteraction = await i.awaitModalSubmit({
+							time: 999000,
+							filter: Constants.BaseModalFilter(i, modal.data.custom_id!)
+						});
 
-							const newValue = modalInteraction.fields.getTextInputValue('textInput');
+						const newValue = modalInteraction.fields.getTextInputValue('textInput');
 
-							const validationCheck = await option.validate(newValue, group);
+						const validationCheck = await fromAsync<void, Error>(() => option.validate(newValue, group));
 
-							if (!isOk(validationCheck)) {
-								return modalInteraction.reply({ content: `Validation failed:\n` + validationCheck.error, ephemeral: hidden });
-							}
+						if (!isOk(validationCheck)) {
+							if (!modalInteraction.isFromMessage()) return;
+							return modalInteraction.update({ embeds: [this.appendCurrentValue(option, groupData, validationCheck.error)] });
+						}
 
-							updateGroup({ newValue, option, group, interaction: modalInteraction });
-						} catch (_) {}
+						updateGroup({ newValue, option, group, interaction: modalInteraction });
 					}
 				}
 			})
@@ -195,18 +196,27 @@ export class SettingsCommand extends Command {
 		}
 	}
 
-	private appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }) {
+	private appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }, validationError?: Error) {
 		const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
-
 		const data = Util.escapeMaskedLink(Util.escapeQuote(String(flattenedGroup[option.path])));
 
-		return this.parseOption(option, flattenedGroup.tag).addFields([
+		const embed = this.parseOption(option, flattenedGroup.tag).addFields([
 			{
 				name: 'Current value',
 				value: isParagraph ? data : Formatters.inlineCode(data),
 				inline: !isParagraph
 			}
 		]);
+
+		if (validationError)
+			embed.addFields([
+				{
+					name: '\u200b',
+					value:  `\n\n⚠ **ValidationError:** ${validationError.message}`
+				}
+			]);
+
+		return embed;
 	}
 
 	private parseOption(option: Setting, groupTag: string) {

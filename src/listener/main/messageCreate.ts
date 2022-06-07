@@ -16,23 +16,21 @@ export class MessageCreateEvent extends Listener<'messageCreate'> {
 			// Refuse to work with system messages.
 			![MessageType.Default, MessageType.Reply].includes(message.type) ||
 			// Ignore self message
-			message.author.id === message.client.user?.id
+			message.author.bot
 		)
 			return;
 
 		const registry = message.channel.fetchRegistry();
 
-		console.log(registry);
-
-		if (!registry || !registry.groupId || !registry.isRegistered()) return;
+		if (!registry || !registry.group || !registry.isRegistered()) return;
 
 		//TODO: handle message exceeding api limit (attachments, content)
 
-		if (message.content.length > 4000) {
-			ConditionHandler.handleExceedingLength(message, registry.group!, registry);
+		if (message.content.length > 2000) {
+			ConditionHandler.handleExceedingLength(message, registry.group, registry);
 			return;
 		}
 		//Responding
-		registry.group?.send(message, { exclude: [registry] });
+		registry.group?.send({ exclude: [registry], original: message });
 	}
 }

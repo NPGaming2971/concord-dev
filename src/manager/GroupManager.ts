@@ -1,18 +1,17 @@
 import type { Database } from 'better-sqlite3';
 import { BaseFetchOptions, CachedManager, Client, SnowflakeUtil } from 'discord.js';
-import { Group, ChannelRegistry, Error } from '../structures/';
+import { Group, ChannelRegistry, Error } from '../structures';
 import type { APIGroup, GroupCreateOptions, GroupResolvable, GroupSettings } from '../typings';
 import { Events, GroupStatusType } from '../typings/enums';
 
 export class GroupManager extends CachedManager<string, Group, GroupResolvable> {
 	private database: Database;
 
-	constructor(client: Client, database: Database, iterable?: Iterable<GroupResolvable>) {
-		//@ts-expect-error
-		super(client, Group, iterable);
+	constructor(client: Client, database: Database) {
+		super(client, Group);
 
 		this.database = database;
-		this._populateCache();
+		this.#_populateCache();
 	}
 
 	public fetch(id: string, { cache = true, force = false }: BaseFetchOptions = {}) {
@@ -59,6 +58,7 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			settings: this.defaultGroupSettings
 		};
 
+		console.log(this.client.database.makeCompatible(data))
 		this.client.database.statements.groupCreate.run(this.client.database.makeCompatible(data));
 
 		this.client.emit(Events.GroupCreate, this._add(data, true, { id: data.id, extras: [this.database] }));
@@ -93,14 +93,14 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 
 		const { deleteGroup } = this.client.database.statements;
 
-		deleteGroup.run(target.id);
 		this.database.transaction(() => target.channels.cache.map((i) => i.edit({ groupId: null })))();
+		deleteGroup.run(target.id);
 
 		this.client.emit(Events.GroupDelete, target);
 		this.cache.delete(target.id);
 	}
 
-	private _populateCache() {
+	#_populateCache() {
 		this.client.database.statements.fetchAllGroups.all().map((e) => {
 			const parsed = this.client.database.parseData(e);
 			this._add(parsed, true, { id: e.id, extras: [this.database] });

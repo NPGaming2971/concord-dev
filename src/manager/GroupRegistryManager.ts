@@ -7,9 +7,8 @@ export interface GroupRegistryManager {
 }
 
 export class GroupRegistryManager extends CachedManager<string, ChannelRegistry, any> {
-	constructor(group: Group, iterable?: Iterable<any>) {
-		//@ts-expect-error
-		super(group.client, ChannelRegistry, iterable);
+	constructor(group: Group) {
+		super(group.client, ChannelRegistry);
 
 		this.group = group;
 	}
@@ -21,9 +20,9 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 
 		const registry = this.client.registry.fetch(id);
 		if (!registry) throw new Error('NON_EXISTENT_RESOURCE', ChannelRegistry.name, id);
-
 		if (registry.groupId) throw new Error('DUPLICATED_RESOURCE', 'Property', 'groupId', `${ChannelRegistry.name} '${id}'`)
 
+		console.log(this.group.id)
 		registry.edit({ groupId: this.group.id });
 
 		this.client.emit(Events.GroupMemberAdd, registry);
@@ -38,7 +37,7 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 
 		const registry = this.client.registry.fetch(id);
 		if (!registry) throw new Error('NON_EXISTENT_RESOURCE', ChannelRegistry.name, id);
-		if (!registry.groupId)  throw new Error('NON_EXISTENT_RESOURCE', 'Property', 'groupId', `${ChannelRegistry.name} '${id}'`);
+		if (!registry.groupId) throw new Error('NON_EXISTENT_RESOURCE', 'Property', 'groupId', `${ChannelRegistry.name} '${id}'`);
 
 		registry.edit({ groupId: null });
 

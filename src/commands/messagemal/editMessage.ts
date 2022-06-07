@@ -15,18 +15,19 @@ export class EditMessage extends Command {
 	}
 	public override async messageContextMenuRun(interaction: MessageContextMenuCommandInteraction<'cached'>) {
         await interaction.deferReply()
-		const message = interaction.targetMessage;
+
+		//const message = interaction.targetMessage;
 
 		if (!interaction.channel?.isRegisterable()) return
 
 		const registry = interaction.channel.fetchRegistry();
 		if (!registry?.group || !registry.isRegistered()) return interaction.editReply('Can not audit this message.')
 
-		const parent = registry.group.messages.getParentOf(message)!
+		//const parent = registry.group.messages.getParentOf(message)!
 
 		console.log(parent)
 
-		console.log(registry.group.messages.getRefOf(parent))
+		//console.log(registry.group.messages.getRefOf(parent))
 
         return
 	} 

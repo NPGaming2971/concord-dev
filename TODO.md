@@ -1,8 +1,7 @@
 # **TO DO LIST**
 
 > ## **Priorized**
-  
-None
+- [ ] \*Fix\* messages management and how the bot stores messages in groups.
 
 > ## **Features/Commands**
   
@@ -15,18 +14,21 @@ None
 - [ ] Change RegistryManager to obtain all registries instead of getting upon fetching groups.
 - [ ] Unite `DatabaseUtil`, `Statements`, `DatabaseStatementBuilder` and `Client#database`
 - [ ] Utilize SQlite transaction. Make "requests bucket" for statements.
-- [ ] Handle group type on `/join`
-  - [ ] Restricted
-  - [x] Protected  
-  - [x] Private
+- [ ] Log channel for group update.
+- [ ] Setting type: 'list'
 
 > ## **Error Fix**
 - [ ] Can't import `ResponseFormatters` in `Util.ts`???
-- [ ] /settings failing when converting all validation function to not use Result
+
 
 > ## **Long Terms**
 - [ ] Split commands into mono-functions
 - [ ] Throw errors on methods instead of handling it on commands.
 
 > ## **Finished**
+- [x] ~~Handle group type on `/join`~~
+  - [x] ~~Restricted~~
+  - [x] ~~Protected~~
+  - [x] ~~Private~~
 - [x] ~~Add `private: boolean` option for `GroupEmbedModal`~~
+- [x] ~~/settings failing when converting all validation function to not use Result~~

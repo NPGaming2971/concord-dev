@@ -2,5 +2,11 @@
 	"workbench.editorAssociations": 
 		{
 			"*.md": "vscode.markdown.preview.editor",
-		}
+		},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/yarn*": true,
+		"**/.yarn": true,
+		"**/.git": true
+	}
 }

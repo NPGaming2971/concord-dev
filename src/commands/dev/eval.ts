@@ -6,7 +6,6 @@ import {
 	EmbedBuilder,
 	Formatters,
 	ModalBuilder,
-	ModalSubmitInteraction,
 	TextInputStyle
 } from 'discord.js';
 import { Command } from '../../structures/';
@@ -25,7 +24,7 @@ export class EvalCommand extends Command {
 					{
 						name: 'async-mode',
 						type: ApplicationCommandOptionType.Boolean,
-						description: 'Whether to enable async mode (allow you to use top level await).'
+						description: 'Whether to enable async mode (allow you to use top level await).',
 					}
 				]
 			},
@@ -38,7 +37,7 @@ export class EvalCommand extends Command {
 		});
 	}
 
-	public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
 		const asyncMode = interaction.options.getBoolean('async-mode') ?? true;
 		const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
@@ -64,10 +63,8 @@ export class EvalCommand extends Command {
 				: text;
 		}
 
-		const filter = (m: ModalSubmitInteraction) => m.user.id === interaction.user.id && m.customId === `concord:eval/${id}`;
-
 		try {
-			const modalInteraction = await interaction.awaitModalSubmit({ time: Time.Second * 999, filter });
+			const modalInteraction = await interaction.awaitModalSubmit({ time: Time.Second * 999, filter: Constants.BaseModalFilter(interaction, codeModal.data.custom_id!) });
 
 			const codeString = modalInteraction.fields.getTextInputValue('concord:eval/codeInput');
 			await modalInteraction.deferReply();

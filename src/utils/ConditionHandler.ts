@@ -1,6 +1,6 @@
 import { ActionRowBuilder, Attachment, ButtonBuilder, ButtonStyle, ComponentType, Message } from 'discord.js';
 import { pick } from 'lodash';
-import { ChannelRegistry, Group, ResponseFormatters } from '../structures';
+import type { ChannelRegistry, Group } from '../structures';
 import { Constants } from '../typings/constants';
 
 const Buttons = {
@@ -36,12 +36,8 @@ export class ConditionHandler {
 				const buffer = Buffer.from(message.content);
 
 				const attachment = new Attachment(buffer, 'message.txt');
-				const payload = await ResponseFormatters.renderMessage(message);
 
-				payload.embeds = payload.embeds?.concat([ResponseFormatters.renderAttachment(attachment)]).slice(0, 10);
-				payload.content = null;
-
-				group.send(payload, { exclude: [registry] });
+				group.send({ original: message, exclude: [registry], files: [attachment], content: null });
 			}
 
 			msg.delete();

@@ -5,7 +5,7 @@ import { GroupStatusType } from '../../typings/enums';
 import { isBoolean } from 'lodash';
 
 export class GroupEmbedModal extends EmbedBuilder {
-	private group: Group;
+	public group: Group;
 	constructor(group: Group, data?: EmbedData | APIEmbed) {
 		super(data);
 		this.group = group;

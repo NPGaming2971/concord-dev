@@ -73,10 +73,11 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 				if (!command.supportContextMenu()) return;
 
 				if (interaction.isMessageContextMenuCommand() && command.supportMessageContextMenu())
-					fromAsync(command.messageContextMenuRun.bind(command, interaction)).catch(console.error);
+					fromAsync(command.messageContextMenuRun.bind(command, interaction))
 
 				if (interaction.isUserContextMenuCommand() && command.supportUserContextMenu())
-					fromAsync(command.userContextMenuRun.bind(command, interaction)).catch(console.error);
+					fromAsync(command.userContextMenuRun.bind(command, interaction))
+
 			}
 		} else if (interaction.isAutocomplete()) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);

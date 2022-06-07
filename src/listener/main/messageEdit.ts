@@ -24,6 +24,6 @@ export class MessageCreateEvent extends Listener<'messageUpdate'> {
 
 		if (!registry || !registry.groupId || !registry.webhook) return;
 		//Responding
-		registry.group?.messages.edit(newMessage);
+		//registry.group?.messages.edit(newMessage);
 	}
 }

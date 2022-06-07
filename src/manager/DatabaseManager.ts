@@ -7,7 +7,7 @@ export class DatabaseManager {
 	static Statements = {
 		fetchRegistriesOfGroup: 'SELECT * FROM channels WHERE groupId = ?',
 		groupCreate:
-			'INSERT OR IGNORE INTO groups (tag, id, ownerId, settings, appearances, entrance, data, locale, status, bans) values (@tag, @id, @ownerId, @settings, @appearances, @entrance, @data, @locale, @status, @bans)',
+			'INSERT INTO groups (tag, id, ownerId, settings, appearances, entrance, data, locale, status, bans) values (@tag, @id, @ownerId, @settings, @appearances, @entrance, @data, @locale, @status, @bans)',
 		groupUpdate:
 			'REPLACE INTO groups (tag, id, ownerId, settings, appearances, entrance, data, locale, status, bans) values (@tag, @id, @ownerId, @settings, @appearances, @entrance, @data, @locale, @status, @bans)',
 		fetchGroupById: 'SELECT * FROM groups WHERE id = ?',
@@ -18,7 +18,6 @@ export class DatabaseManager {
 		createRegistry: 'INSERT OR REPLACE INTO channels (id, webhookurl, guildId, groupId) VALUES (@id, @webhookurl, @guildId, @groupId);',
 		deleteRegistry: 'DELETE FROM channels WHERE id = ?',
 		getRegistry: 'SELECT * FROM channels WHERE id = ?;',
-		updateRegistryGroup: 'UPDATE channels SET groupId = ? WHERE id = ?'
 	};
 
 	constructor(path: string, options: Database.Options = {}) {
@@ -49,9 +48,9 @@ export class DatabaseManager {
 
 		const Routes = {
 			createTable: {
-				groups: 'CREATE TABLE IF NOT EXISTS groups (tag TEXT PRIMARY KEY NOT NULL UNIQUE, id TEXT NOT NULL UNIQUE, ownerId TEXT NOT NULL, entrance TEXT, data TEXT NOT NULL, appearances TEXT NOT NULL, settings TEXT NOT NULL, locale TEXT NOT NULL, status TEXT NOT NULL, createdTimestamp INTERGER NOT NULL, bans TEXT NOT NULL);',
+				groups: 'CREATE TABLE IF NOT EXISTS groups (tag TEXT PRIMARY KEY NOT NULL UNIQUE, id TEXT NOT NULL UNIQUE, ownerId TEXT NOT NULL, entrance TEXT, data TEXT NOT NULL, appearances TEXT NOT NULL, settings TEXT NOT NULL, locale TEXT NOT NULL, status TEXT NOT NULL, bans TEXT NOT NULL);',
 				channels:
-					'CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY NOT NULL UNIQUE, webhookurl TEXT NOT NULL UNIQUE, guildId TEXT NOT NULL, groupId TEXT, FOREIGN KEY (groupId) REFERENCES groups(id) ON UPDATE CASCADE ON DELETE SET NULL);'
+					'CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY NOT NULL UNIQUE, webhookurl TEXT NOT NULL UNIQUE, guildId TEXT NOT NULL, groupId TEXT, FOREIGN KEY (groupId) REFERENCES groups(id) ON UPDATE CASCADE ON DELETE NO ACTION);'
 			},
 			createIndex: {
 				groupId: 'CREATE UNIQUE INDEX IF NOT EXISTS idx_group_id ON groups (id);',

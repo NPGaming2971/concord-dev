@@ -20,9 +20,9 @@ export class Pagination<T> implements Pagination<T> {
 		this.currentIndex = options.startingPage ?? 0;
 
 		if (isNumber(groupBy)) {
-			this.renderChunks(options.pages, groupBy);
+			this.#renderChunks(options.pages, groupBy);
 		} else if (isString(groupBy)) {
-			this.groupByProperty(options.pages, groupBy);
+			this.#groupByProperty(options.pages, groupBy);
 		}
 
 		Util.updateIndex(this);
@@ -33,7 +33,7 @@ export class Pagination<T> implements Pagination<T> {
 		return this.pages.length - 1;
 	}
 
-	private groupByProperty(array: T[] = [], propertyKey: string) {
+	#groupByProperty(array: T[] = [], propertyKey: string) {
 		this.pages = Object.values(groupBy(array, propertyKey));
 
 		return;
@@ -77,7 +77,7 @@ export class Pagination<T> implements Pagination<T> {
 		return this.getPage(this.currentIndex);
 	}
 
-	private renderChunks(array: T[] = [], chunkSize: number = 1) {
+	#renderChunks(array: T[] = [], chunkSize: number = 1) {
 		if (chunkSize < 0) throw new Error('Can not have a page size of zero or negative number.');
 
 		this.pages = chunk(array, chunkSize);

@@ -6,6 +6,7 @@ import {
 	ChatInputCommandInteraction,
 	ComponentType,
 	InteractionReplyOptions,
+	InteractionUpdateOptions,
 	WebhookClient
 } from 'discord.js';
 import fetch from 'node-fetch';
@@ -51,7 +52,7 @@ export class Util {
 		this.Buttons.index.setLabel(pagination.getIndex().join('/'));
 	}
 
-	static handlePagination<T>(interaction: ButtonInteraction, pagination: Pagination<T>) {
+	static handlePagination<T>(interaction: ButtonInteraction, pagination: Pagination<T>, updateOptionsOverwrite: (pagination: Pagination<T>) => InteractionUpdateOptions = () => ({})) {
 		switch (interaction.customId) {
 			case 'concord:pagination/previous':
 				pagination.previousPage();
@@ -69,7 +70,8 @@ export class Util {
 
 		this.renderRow(pagination);
 		this.updateIndex(pagination);
-		interaction.update({ embeds: pagination.getCurrentPage(), components: [this.pagiationRow] });
+
+		interaction.update({ embeds: pagination.getCurrentPage(), components: [this.pagiationRow], ...updateOptionsOverwrite(pagination) });
 	}
 
 	static isFunction(input: unknown): input is Function {
@@ -154,38 +156,32 @@ export class Util {
 		return result;
 	}
 
+	static get promptRow() {
+		return new ActionRowBuilder<ButtonBuilder>().setComponents([
+			new ButtonBuilder().setCustomId('concord:startPrompt/confirm').setLabel('Confirm').setStyle(ButtonStyle.Success),
+			new ButtonBuilder().setCustomId('concord:startPrompt/cancel').setLabel('Cancel').setStyle(ButtonStyle.Danger)
+		]);
+	}
+
 	static async startPrompt(
 		interaction: ChatInputCommandInteraction<'cached'>,
 		options: InteractionReplyOptions,
 		allow: (i: ButtonInteraction) => any,
 		deny: (i: ButtonInteraction) => any
 	) {
-		const buttons = {
-			confirm: new ButtonBuilder().setCustomId('concord:startPrompt/confirm').setLabel('Confirm').setStyle(ButtonStyle.Success),
-			cancel: new ButtonBuilder().setCustomId('concord:startPrompt/cancel').setLabel('Cancel').setStyle(ButtonStyle.Danger)
-		};
-
-		const row = new ActionRowBuilder<ButtonBuilder>().addComponents([buttons.confirm, buttons.cancel]);
-
 		const message = await interaction[interaction.replied ? 'followUp' : 'editReply']({
 			...options,
-			components: [...(options.components ?? []), row],
+			components: [...(options.components ?? []), this.promptRow],
 			fetchReply: true
 		});
 
 		message
 			.awaitMessageComponent({ filter: Constants.BaseFilter(interaction), componentType: ComponentType.Button, idle: 15000 })
 			.then((i) => {
-				switch (i.customId) {
-					case 'concord:startPrompt/confirm':
-						allow(i);
-						break;
-					case 'concord:startPrompt/cancel':
-						deny(i);
-						break;
-				}
+				this.handlePromptCollect(i, allow, deny);
 			})
-			.catch((_err) => {
+			.catch((err) => {
+				console.log(err)
 				message.edit({
 					components: [],
 					embeds: [],
@@ -193,6 +189,22 @@ export class Util {
 				});
 			});
 	}
+
+	public static handlePromptCollect(
+		interaction: ButtonInteraction<'cached'>,
+		allow: (interaction: ButtonInteraction<'cached'>) => any,
+		deny: (interaction: ButtonInteraction<'cached'>) => any
+	) {
+		switch (interaction.customId) {
+			case 'concord:startPrompt/confirm':
+				allow(interaction);
+				break;
+			case 'concord:startPrompt/cancel':
+				deny(interaction);
+				break;
+		}
+	}
+
 	public static async isImage(url: string): Promise<boolean> {
 		try {
 			const res = await fetch(url);

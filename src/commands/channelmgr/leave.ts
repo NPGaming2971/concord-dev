@@ -12,7 +12,8 @@ export class LeaveCommand extends Command {
 					{
 						name: 'channel',
 						description: 'The channel to execute this command in. Defaults to this channel.',
-						type: ApplicationCommandOptionType.Channel
+						type: ApplicationCommandOptionType.Channel,
+						channelTypes: [ChannelType.GuildNews, ChannelType.GuildText]
 					}
 				]
 			},

@@ -1,11 +1,11 @@
-import { from, fromAsync, Result } from '@sapphire/result';
-import { Awaitable, TextInputStyle } from 'discord.js';
+import { TextInputStyle } from 'discord.js';
 import { Group, GroupPermissionsBitfield } from '../src/structures';
 import type { GroupPermissionsString, Maybe } from '../src/typings';
 import { GroupStatusType } from '../src/typings/enums';
 import { Converters, Util } from '../src/utils';
 const { isImage } = Util;
-
+import { imageSize } from 'image-size';
+import fetch from 'node-fetch';
 export enum CategoryType {
 	Appearances = 'Appearances',
 	Security = 'Security',
@@ -19,7 +19,7 @@ enum SettingType {
 	Number = 'number'
 }
 
-const DefaultValidate = (): Result<void, string> => from(() => {});
+const DefaultValidate = () => {};
 
 export class Setting {
 	constructor(data: SettingData) {
@@ -86,10 +86,8 @@ const data: SettingData[] = [
 		description: 'Your group name.',
 		type: SettingType.String,
 		validate: (value: string) => {
-			return from(() => {
-				if (/^[a-z\d\-_ ]{3,32}$/gi.test(value)) return;
-				throw new Error('Group name can only contains `[a-z]`, `[A-Z]`, `[0-9]`, `-`, `_` characters.');
-			});
+			if (/^[a-z\d\-_ ]{3,32}$/gi.test(value)) return;
+			throw new Error('Group name can only contains `[a-z]`, `[A-Z]`, `[0-9]`, `-`, `_` characters.');
 		},
 		default: null,
 		path: 'appearances.name',
@@ -107,9 +105,9 @@ const data: SettingData[] = [
 		default: null,
 		path: 'entrance.password',
 		type: SettingType.String,
-		validate: (_, group) => from(() => {
-			if (group?.status !== GroupStatusType.Protected) throw new Error('Your group status settings must be `protected` to use this settings.')
-		}),
+		validate: (_, group) => {
+			if (group?.status !== GroupStatusType.Protected) throw new Error('Your group status settings must be `protected` to use this settings.');
+		},
 		help: {
 			category: CategoryType.Security
 		},
@@ -118,14 +116,13 @@ const data: SettingData[] = [
 	},
 	{
 		name: 'Delete Duplicate',
-		description:
-			'Automatically delete duplicated requests from the same channel.',
+		description: 'Automatically delete duplicated requests from the same channel.',
 		default: true,
 		path: 'settings.requests.deleteDuplicate',
 		type: SettingType.Boolean,
 		help: {
 			category: CategoryType.Requests
-		},
+		}
 	},
 	{
 		name: 'Status',
@@ -173,9 +170,7 @@ const data: SettingData[] = [
 
 		validate: function (value: number) {
 			const range = this.restraints?.range;
-			return fromAsync(() => {
-				validateNumberRange(value, range);
-			});
+			validateNumberRange(value, range);
 		}
 	},
 	{
@@ -203,7 +198,23 @@ const data: SettingData[] = [
 		type: SettingType.String,
 		default: null,
 		validate: (newValue: string) => {
-			return fromAsync<void, string>(validateImage(newValue));
+			return validateImage(newValue);
+		}
+	},
+	{
+		name: 'Banner',
+		path: 'appearances.banner',
+		help: {
+			category: CategoryType.Appearances
+		},
+		description: 'Set your group banner (1920x1080).',
+		type: SettingType.String,
+		default: null,
+		validate: async (newValue: string) => {
+			validateImage(newValue);
+			return fetch(newValue).then(i => i.buffer()).then(e => {
+				validateImageSize(e, [1920, 1080])
+			})
 		}
 	}
 ];
@@ -281,7 +292,7 @@ interface BaseSetting {
 	};
 }
 
-type ValidateFunction<T> = (value: T, group?: Group) => Awaitable<Result<void, string>>;
+type ValidateFunction<T> = (value: T, group?: Group) => void;
 
 function validateNumberRange(n: number, range: [Maybe<number>, Maybe<number>] = [null, null]) {
 	const [low = -Infinity, high = Infinity] = range;
@@ -298,6 +309,17 @@ function validateNumberString(value: string) {
 	const parsed = Converters.parseString(value);
 
 	if (!parsed) throw new TypeError('Not a valid number.');
+}
+
+function validateImageSize(buffer: Buffer, [w = Infinity, h = Infinity]: [number, number] = [Infinity, Infinity]) {
+	const dimensions = imageSize(buffer);
+
+	if (!dimensions.type) throw new Error(`Unsupported image type.`)
+
+	if ((dimensions.height! > h) || (dimensions.width! > w)) {
+		throw new Error(`Invalid image size (${dimensions.width}x${dimensions.height}).`);
+	}
+	return;
 }
 
 async function validateImage(testValue: string) {

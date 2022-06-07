@@ -1,6 +1,6 @@
 import type { Database } from 'better-sqlite3';
-import { Base, Client, Formatters, LocaleString, Message, SnowflakeUtil, WebhookMessageOptions } from 'discord.js';
-import { GroupMessageManager, GroupMessageSendOptions } from '../../manager/GroupMessageManager';
+import { Base, Client, Formatters, LocaleString, SnowflakeUtil } from 'discord.js';
+import { GroupMessageManager, GroupMessageOptions } from '../../manager/GroupMessageManager';
 import { GroupRegistryManager } from '../../manager/GroupRegistryManager';
 import { GroupRequestManager } from '../../manager/GroupRequestManager';
 import type { APIGroup, DeepPartial } from '../../typings';
@@ -26,7 +26,7 @@ export class Group extends Base implements Group {
 		this._patch(data);
 	}
 
-	private firstRun = false;
+	#firstRun = false;
 
 	public displayAvatarURL() {
 		return this.avatar ?? this.client.rest.cdn.defaultAvatar(0);
@@ -55,8 +55,8 @@ export class Group extends Base implements Group {
 	public async fetchOwner() {
 		return this.client.users.fetch(this.ownerId);
 	}
-	public async send(message: Message | WebhookMessageOptions, options: GroupMessageSendOptions = { exclude: [] }) {
-		return this.messages.create(message, options);
+	public async send(options: GroupMessageOptions) {
+		return this.messages.create(options);
 	}
 
 	private _patch(data: Partial<APIGroup>) {
@@ -101,8 +101,8 @@ export class Group extends Base implements Group {
 			this.settings = data.settings;
 		}
 
-		if (!this.firstRun) {
-			this.firstRun = false;
+		if (!this.#firstRun) {
+			this.#firstRun = false;
 
 			this.channels.cache.clear();
 			const registries = this.client.database.statements.fetchRegistriesOfGroup.all(this.id);

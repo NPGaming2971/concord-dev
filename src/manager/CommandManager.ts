@@ -9,7 +9,7 @@ import { join, basename, normalize } from 'node:path';
 import { Util } from '../utils/';
 import { Routes } from 'discord-api-types/v10';
 import { Constants } from '../typings/constants';
-import { Error, type Listener, Command } from '../structures/';
+import { Error, Listener, Command } from '../structures/';
 
 const globPromise = promisify(glob);
 let firstRun = true;
@@ -67,8 +67,7 @@ export class CommandManager extends BaseManager {
 	}
 
 	public deploy() {
-		//Preconditions: CommandManager.cache is populated
-		if (!this.cache.size) throw new Error(`EMPTY_RESOURCE`, 'CommandManager.prototype.cache');
+		if (!this.cache.size) throw new Error(`EMPTY_RESOURCE`, 'Cache of', this.constructor.name);
 
 		const rest = new REST({ version: '10' }).setToken(process.env.TOKEN!);
 		const clientId = Constants.ClientId;
@@ -140,10 +139,9 @@ export class CommandManager extends BaseManager {
 			const command = Object.values({ ...commandFile })[0] as any;
 
 			if (typeof command === 'undefined') {
-				if (!options?.errorOnEmptyFile) {
-					continue;
-				} else throw new Error('EMPTY_COMMAND_FILE', basename(file));
+				if (options?.errorOnEmptyFile) new Error('EMPTY_RESOURCE', Command.name, basename(file));
 			}
+
 			const constructedCommand = Reflect.construct(command, []) as Command;
 
 			constructedCommand.path = file;
@@ -162,11 +160,15 @@ export class CommandManager extends BaseManager {
 		}
 
 		for (const file of files) {
-			const eventFile = await this.refreshCache(file);
+			const listenerFile = await this.refreshCache(file);
 
-			const event = Object.values({ ...eventFile })[0] as any;
+			const listener = Object.values({ ...listenerFile })[0] as any;
 
-			const constructedEvent = Reflect.construct(event, [this.client]) as Listener<any>;
+			if (typeof listener === 'undefined') {
+				if (options?.errorOnEmptyFile) new Error('EMPTY_RESOURCE', Listener.name, basename(file));
+			}
+
+			const constructedEvent = Reflect.construct(listener, [this.client]) as Listener<any>;
 
 			constructedEvent.path = file;
 

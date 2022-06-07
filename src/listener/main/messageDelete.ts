@@ -28,6 +28,6 @@ export class MessageCreateEvent extends Listener<'messageDelete'> {
 
 		console.log(registry)
 
-		registry.group.messages.delete(message);
+		//registry.group.messages.delete(message);
 	}
 }

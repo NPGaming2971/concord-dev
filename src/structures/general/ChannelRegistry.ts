@@ -10,6 +10,7 @@ export interface ChannelRegistry<Registered extends boolean = boolean> {
 	webhook: If<Registered, string>
 	groupId: string | null;
 }
+
 export class ChannelRegistry extends Base implements ChannelRegistry {
 	constructor(client: Client, rawGroupData: APIChannelRegistry) {
 		super(client);
@@ -17,6 +18,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	public _patch(data: APIChannelRegistry) {
+
 		if ('id' in data) {
 			this.channelId = data.id;
 		}

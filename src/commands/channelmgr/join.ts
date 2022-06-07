@@ -1,4 +1,5 @@
 import { ActionRowBuilder, TextInputBuilder } from '@discordjs/builders';
+import { from, isOk } from '@sapphire/result';
 import {
 	ApplicationCommandOptionType,
 	ButtonBuilder,
@@ -12,9 +13,10 @@ import {
 } from 'discord.js';
 import { upperFirst } from 'lodash';
 import { ChannelRegistry, Command, Error, Group, GroupEmbedModal, ResponseFormatters } from '../../structures/';
+import { GroupRequest } from '../../structures/general/GroupRequest';
 import type { Maybe, RegisterableChannel } from '../../typings';
 import { Constants } from '../../typings/constants';
-import { GroupStatusType, RequestType, Time } from '../../typings/enums';
+import { GroupStatusType, RequestState, RequestType, Time } from '../../typings/enums';
 import { Util } from '../../utils/';
 const { prepareError, appendEmojiToString } = ResponseFormatters;
 
@@ -34,7 +36,8 @@ export class JoinCommand extends Command {
 					{
 						name: 'channel',
 						description: 'The channel to execute this command in. Defaults to this channel.',
-						type: ApplicationCommandOptionType.Channel
+						type: ApplicationCommandOptionType.Channel,
+						channelTypes: [ChannelType.GuildNews, ChannelType.GuildText]
 					}
 				]
 			},
@@ -103,17 +106,80 @@ export class JoinCommand extends Command {
 		this.prompt(interaction, registry.channel, group, registry.group);
 	}
 
-	private handleRestricted(options: HandleOptions) {
+	private async handleRestricted(options: HandleOptions) {
 		const { group, interaction, registry } = options;
 
-		
+		const editMessageRow = new ActionRowBuilder<ButtonBuilder>().setComponents([
+			new ButtonBuilder().setCustomId('concord:join/editRequestMessage').setStyle(ButtonStyle.Primary).setLabel('Edit Request Message')
+		]);
 
-		try {
-			group.requests.create({ channel: registry.channel, type: RequestType.Connect, message: 'test' });
-			interaction.editReply(`Sent a request to ${group}!`);
-		} catch (err) {
-			console.log(err);
-		}
+		const mockRequest = new GroupRequest(
+			interaction.client,
+			{ channelId: interaction.channelId, message: null, id: 'any', state: RequestState.Pending, type: RequestType.Connect },
+			group.id
+		);
+
+		const messagePrompt = await interaction.editReply({
+			content: 'You are about to send a request to this group. Are you sure about that?\nYou can edit the message of the request if you like.',
+			components: [editMessageRow, Util.promptRow],
+			embeds: [ResponseFormatters.renderRequest(mockRequest)]
+		});
+
+		const collector = messagePrompt.createMessageComponentCollector({
+			componentType: ComponentType.Button,
+			idle: 60000,
+			filter: Constants.BaseFilter(interaction)
+		});
+
+		collector.on('collect', async (i) => {
+			if (i.customId === 'concord:join/editRequestMessage') {
+				const textInputField = new TextInputBuilder()
+					.setCustomId('concord:join/editMessage')
+					.setLabel('New request message')
+					.setPlaceholder('I want to join your group!')
+					.setStyle(TextInputStyle.Short);
+
+				const modal = new ModalBuilder()
+					.setComponents([new ActionRowBuilder<TextInputBuilder>().setComponents([textInputField])])
+					.setTitle('Concord: Edit request message')
+					.setCustomId(`concord:manage/requests/${i.id}`);
+
+				i.showModal(modal);
+				const modalInteraction = await i.awaitModalSubmit({ time: 999000, filter: Constants.BaseModalFilter(i, modal.data.custom_id!) });
+
+				mockRequest.message = modalInteraction.fields.getTextInputValue('concord:join/editMessage');
+
+				if (!modalInteraction.isFromMessage()) return;
+
+				modalInteraction.update({ embeds: [ResponseFormatters.renderRequest(mockRequest)] });
+			}
+
+			const handleAllow = async (a: typeof i) => {
+				await a.deferUpdate();
+				const result = from<GroupRequest, Error>(() =>
+					group.requests.create({ channel: registry.channel, type: RequestType.Connect, message: mockRequest.message ?? undefined })
+				);
+
+				if (isOk(result)) {
+					interaction.editReply({ content: `\`✔️\` Successfully sent a request to ${group}!`, components: [], embeds: [] });
+					collector.stop();
+				} else {
+					interaction.editReply(
+						Object.assign(prepareError(result.error), {
+							components: [],
+							embeds: []
+						})
+					);
+					collector.stop();
+				}
+			};
+
+			const handleDeny = (a: typeof i) => {
+				a.update({ content: '`✔️` Action cancelled.', components: [], embeds: [] });
+			};
+
+			Util.handlePromptCollect(i, handleAllow, handleDeny);
+		});
 	}
 
 	private async handleProtected(options: HandleOptions) {
