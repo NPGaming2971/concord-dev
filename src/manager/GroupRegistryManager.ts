@@ -23,11 +23,15 @@ export class GroupRegistryManager extends CachedManager<string, ChannelRegistry,
 		if (registry.groupId) throw new Error('DUPLICATED_RESOURCE', 'Property', 'groupId', `${ChannelRegistry.name} '${id}'`)
 
 		console.log(this.group.id)
-		registry.edit({ groupId: this.group.id });
+
+		this.client.database.database.transaction(() => {
+			registry.edit({ groupId: this.group.id });
+
+			this.group.requests.bulkDelete(i => i.channelId === registry.channelId)
+		})()
 
 		this.client.emit(Events.GroupMemberAdd, registry);
 		this.cache.set(registry.channelId, registry);
-		this.group.requests.bulkDelete(i => i.channelId === registry.channelId)
 
 		return registry
 	}

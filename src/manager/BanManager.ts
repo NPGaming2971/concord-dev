@@ -5,5 +5,16 @@ export class GlobalBanManager extends CachedManager<string, any, any> {
         super(client, Object)
     }
 
-    
-}
+    public fetch() {}
+
+    public query() {}
+
+    public create() {}
+
+    public edit() {}
+
+    public delete() {}
+
+    //@ts-expect-error
+    private handleTempBan() {}
+} 

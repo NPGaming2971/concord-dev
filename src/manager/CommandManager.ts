@@ -177,7 +177,9 @@ export class CommandManager extends BaseManager {
 	}
 
 	private loadToCache(data: Command) {
-		if (this.cache.has(data.data.name) && firstRun) throw new Error('DUPLICATED_RESOURCE', Command.name, data.data.name, this.cache.constructor.name);
+		if (this.cache.has(data.data.name) && firstRun)
+			throw new Error('DUPLICATED_RESOURCE', Command.name, data.data.name, this.cache.constructor.name);
+			
 		this.cache.set(data.data.name, data);
 	}
 

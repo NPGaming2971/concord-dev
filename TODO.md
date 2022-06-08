@@ -9,10 +9,8 @@ None
 > ## **Short Terms**
 - [ ] Make a BaseError class. Generalize Errors.
 - [ ] Parse output from `Result`
-- [ ] Improve errors displaying on `/settings`
-- [ ] Add control settings for requests `deleteDuplicate`, `autoAction: { /* Delete requests when 'message' contains */ }`
+- [ ] Add control settings for requests ~~`deleteDuplicate`~~, `autoAction: { /* Delete requests when 'message' contains */ }`
 - [ ] Change RegistryManager to obtain all registries instead of getting upon fetching groups.
-- [ ] Unite `DatabaseUtil`, `Statements`, `DatabaseStatementBuilder` and `Client#database`
 - [ ] Utilize SQlite transaction. Make "requests bucket" for statements.
 - [ ] Log channel for group update.
 - [ ] Setting type: 'list'
@@ -24,6 +22,7 @@ None
 > ## **Long Terms**
 - [ ] Split commands into mono-functions
 - [ ] Throw errors on methods instead of handling it on commands.
+- [ ] Migrate to PostgreSQL
 
 > ## **Finished**
 - [x] ~~Handle group type on `/join`~~
@@ -32,3 +31,5 @@ None
   - [x] ~~Private~~
 - [x] ~~Add `private: boolean` option for `GroupEmbedModal`~~
 - [x] ~~/settings failing when converting all validation function to not use Result~~
+- [x] Improve errors displaying on `/settings`
+- [x] ~~Unite `DatabaseUtil`, `Statements`, `DatabaseStatementBuilder` and `Client#database`~~

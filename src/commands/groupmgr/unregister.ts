@@ -52,12 +52,13 @@ export class UnregisterCommand extends Command {
 			interaction,
 			options,
 			async (i) => {
-				const result = await fromAsync<void, DiscordAPIError>(this.unregister(registry));
+				const result = await fromAsync<any, DiscordAPIError>(() => this.unregister(registry));
 
+				console.log(result)
 				if (!isOk(result)) {
 					return i.update(prepareError(result.error));
 				}
-
+				
 				return i.update({
 					content: appendEmojiToString(Constants.Emojis.Success, `Successfully unregistered this channel.`),
 					...defaultOptions
@@ -72,12 +73,13 @@ export class UnregisterCommand extends Command {
 	}
 
 	public async unregister(registry: ChannelRegistry) {
+
 		if (registry.isRegistered()) {
 			const webhook = await registry.fetchWebhook();
 
 			await webhook.delete().catch((err) => err);
 		}
 
-		registry.delete();
+		return registry.delete();
 	}
 }

@@ -100,7 +100,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	public delete() {
-		this.client.registry.delete(this.channelId);
+		return this.client.registry.delete(this.channelId);
 	}
 }
 

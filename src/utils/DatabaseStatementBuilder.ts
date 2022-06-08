@@ -1,5 +1,6 @@
 import { isBuffer, isNull, isNumber, isString } from 'lodash';
-enum Seperators {
+
+export enum Separators {
 	Equal = ' = ',
 	Comma = ', ',
 	Empty = '',
@@ -19,7 +20,7 @@ type OrderByParameter = {
 
 
 export class DatabaseStatementBuilder {
-	private static transformObject(object: object, inBetween: Seperators = Seperators.Empty, splitBy: Seperators = Seperators.Space) {
+	public static transformObject(object: object, inBetween: Separators = Separators.Empty, splitBy: Separators = Separators.Space) {
 		this.validateObject(object);
 
 		const iterable = Object.entries(object);
@@ -57,8 +58,8 @@ export class DatabaseStatementBuilder {
 	}
 
 	static update(tableName: string, data: object, location?: object, order?: OrderByParameter) {
-		return `UPDATE ${tableName} SET ${this.transformObject(data, Seperators.Equal, Seperators.Comma)} ${
-			location ? `WHERE ${this.transformObject(location, Seperators.Equal, Seperators.And)}` : Seperators.Empty
-		} ${order ? `ORDER BY ${this.transformObject(order, Seperators.Space, Seperators.Colon)}` : Seperators.Empty}`;
+		return `UPDATE ${tableName} SET ${this.transformObject(data, Separators.Equal, Separators.Comma)} ${
+			location ? `WHERE ${this.transformObject(location, Separators.Equal, Separators.And)}` : Separators.Empty
+		} ${order ? `ORDER BY ${this.transformObject(order, Separators.Space, Separators.Colon)}` : Separators.Empty}`;
 	}
 }

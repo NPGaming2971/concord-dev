@@ -12,6 +12,7 @@ import Settings from '../../../assets/settings';
 type SettingValue = string | number | boolean | null;
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
+		
 		super(client);
 
 		this.channels = new GroupRegistryManager(this);
@@ -60,7 +61,6 @@ export class Group extends Base implements Group {
 	}
 
 	private _patch(data: Partial<APIGroup>) {
-		
 		if (data.tag) {
 			this.tag = data.tag;
 		}
@@ -105,10 +105,9 @@ export class Group extends Base implements Group {
 			this.#firstRun = false;
 
 			this.channels.cache.clear();
-			const registries = this.client.database.statements.fetchRegistriesOfGroup.all(this.id);
+			const registries = this.client.registry.query({ groupId: this.id });
 			for (const registry of registries) {
-				this.client.registry._add(registry, true, { id: registry.id, extras: [] });
-				this.channels._add(registry, true, { id: registry.id, extras: [] });
+				this.channels.cache.set(registry.channelId, registry);
 			}
 		}
 

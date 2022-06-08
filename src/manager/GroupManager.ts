@@ -29,10 +29,9 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 
 	//TODO: Validate locale
 	public create(tag: string, options: GroupCreateOptions) {
-		const { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' } = options
+		const { avatar = null, banner = null, owner, name = null, description = null, locale = 'global' } = options;
 		const ownerId = this.client.users.resolveId(owner);
-		if (this.cache.find((i) => i.tag === tag))
-			throw new Error('DUPLICATED_RESOURCE', this.holds.name, tag);
+		if (this.cache.find((i) => i.tag === tag)) throw new Error('DUPLICATED_RESOURCE', this.holds.name, tag);
 
 		const data = {
 			tag,
@@ -58,7 +57,6 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			settings: this.defaultGroupSettings
 		};
 
-		console.log(this.client.database.makeCompatible(data))
 		this.client.database.statements.groupCreate.run(this.client.database.makeCompatible(data));
 
 		this.client.emit(Events.GroupCreate, this._add(data, true, { id: data.id, extras: [this.database] }));
@@ -93,8 +91,10 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 
 		const { deleteGroup } = this.client.database.statements;
 
-		this.database.transaction(() => target.channels.cache.map((i) => i.edit({ groupId: null })))();
-		deleteGroup.run(target.id);
+		this.database.transaction(() => {
+			target.channels.cache.map((i) => i.edit({ groupId: null }));
+			deleteGroup.run(target.id);
+		})();
 
 		this.client.emit(Events.GroupDelete, target);
 		this.cache.delete(target.id);

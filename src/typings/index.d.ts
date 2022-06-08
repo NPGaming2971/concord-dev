@@ -1,4 +1,4 @@
-import type { ChannelResolvable, LocaleString, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
+import type { LocaleString, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
 import type { APIMessage } from 'discord.js';
 import type { ChannelRegistry, Group } from '../structures/';
 import type { GroupPermissionsFlagBits, GroupStatusType, RequestState, RequestType } from './enums';
@@ -9,6 +9,8 @@ export type CommandAndEventLoadOptions = {
 	errorOnNoMatches?: boolean;
 	errorOnEmptyFile?: boolean;
 };
+
+export type AtLeastOne<T, U = {[K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
 
 export type GroupPermissionsString = keyof typeof GroupPermissionsFlagBits;
 

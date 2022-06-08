@@ -9,9 +9,8 @@ export interface GroupRequestManager {
 }
 
 export class GroupRequestManager extends CachedManager<string, GroupRequest, any> {
-	constructor(group: Group, iterable?: Iterable<any>) {
-		//@ts-expect-error
-		super(group.client, GroupRequest, iterable);
+	constructor(group: Group) {
+		super(group.client, GroupRequest);
 
 		this.group = group;
 	}
@@ -32,14 +31,24 @@ export class GroupRequestManager extends CachedManager<string, GroupRequest, any
 
 		requests.push(data);
 
-		this.group.edit({ entrance: { requests } });
+		this.client.database.database.transaction(() => {
+			this.group.edit({ entrance: { requests } });
+
+			// Avoid duplicates
+			if (this.group.getSetting('requests.deleteDuplicate')) {
+				const last = this.cache.last();
+				this.bulkDelete(
+					(i) =>
+						i.channelId === result.channelId &&
+						i.isPending() &&
+						i.id !== last?.id &&
+						Date.now() - i.createdTimestamp > 12 * 60 * 60 * 1000
+				);
+			}
+		});
+
 		const result = this._add(data, true, { id: data.id, extras: [] });
 
-		// Avoid duplicates
-		if (this.group.getSetting('requests.deleteDuplicate')) {
-			const last = this.cache.last();
-			this.bulkDelete((i) => i.channelId === result.channelId && i.isPending() && i.id !== last?.id);
-		}
 		return result;
 	}
 
@@ -48,7 +57,7 @@ export class GroupRequestManager extends CachedManager<string, GroupRequest, any
 		const { requests } = this.group.data.entrance;
 
 		pullAllBy(requests, [target], 'id');
-		
+
 		this.cache.delete(id);
 		this.group.edit({ entrance: { requests } });
 	}

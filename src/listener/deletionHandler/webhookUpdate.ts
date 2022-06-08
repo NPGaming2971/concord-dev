@@ -2,36 +2,51 @@ import type { Client } from 'discord.js';
 import { Listener } from '../../structures';
 import type { RegisterableChannel } from '../../typings';
 
-export class WebhookUpdateEvent extends Listener<'webhookUpdate'> {
+
+export default class WebhookUpdateEvent extends Listener<'webhookUpdate'> {
 	constructor(client: Client) {
 		super(client, { name: 'webhookUpdate', emitter: client });
 	}
 
-    public async run(channel: RegisterableChannel) {
+	public async run(channel: RegisterableChannel) {
+		if (!channel.isRegisterable()) return;
 
-        if (!channel.isRegisterable()) return
+		const registry = channel.fetchRegistry();
 
-        const registry = channel.fetchRegistry()
+		const webhooks = await channel.fetchWebhooks();
 
-        const webhooks = await channel.fetchWebhooks()
+		const myWebhooks = webhooks.filter((w) => w.owner?.id === channel.client.user?.id);
 
-        const myWebhooks = webhooks.filter(w => w.owner?.id === channel.client.user?.id)
+		const [correct, violation] = myWebhooks.partition((i) => i.url === registry?.webhook);
 
-        const [correct, violation] = myWebhooks.partition(i => i.url === registry?.webhook)
-        
-        if (!correct.size && registry?.isRegistered()) {
-            const webhook = await channel.createWebhook('Concord', { reason: 'Auto fix webhooks change.' })
+		console.log(`Correct: ${correct.size}\nViolation: ${violation.size}`);
 
-            registry.edit({ url: webhook.url })
+		if (!correct.size && registry?.isRegistered()) {
+			const webhook = await channel.createWebhook('Concord', { reason: 'Auto fix webhooks change.' });
 
+			registry.edit({ url: webhook.url });
+			webhook.send(
+				'Unauthorized webhook location change violation detected. Successfully reordered.\nIf you are attempting to unregister a channel, please use `/unregister` next time.'
+			);
+		}
 
-        }
+		if (violation.size) {
+			violation.map(async (i) => {
+				const matchingRegistry = channel.client.registry.query({ webhookurl: i.url })[0];
 
-        if (violation.size) {
-            violation.map(i => {
-                //@ts-expect-error
-                const matchingRegistry = channel.client.registry.fetch(i.url)
-            })
-        }
-    }
+				console.log(matchingRegistry);
+
+				if (matchingRegistry) {
+					await i.edit({ channel: matchingRegistry.channelId });
+					i.send(
+						'Unauthorized webhook location change violation detected. Successfully reordered.\nIf you are attempting to unregister a channel, please use `/unregister` next time.'
+					);
+				} else {
+					i.delete();
+				}
+			});
+		}
+	}
+
+	public handleViolationPenalty() {}
 }
