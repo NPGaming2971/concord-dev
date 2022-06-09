@@ -39,7 +39,9 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		const query = `SELECT * FROM channels WHERE ${DatabaseStatementBuilder.transformObject(options, Separators.Equal, Separators.And)}`;
 
 		return this.client.database.database
-			.prepare(query).all().map((i) => this._add(i, true, { id: i.id, extras: [] }));
+			.prepare(query)
+			.all()
+			.map((i) => this._add(i, true, { id: i.id, extras: [] }));
 	}
 
 	public delete(channel: ChannelResolvable) {
@@ -51,8 +53,8 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		this.client.database.database.transaction(() => {
 			registry?.group?.channels.kick(id);
 			deleteRegistry.run(id);
-		})()
-		
+		})();
+
 		this.cache.delete(id);
 
 		Blocker.add(id);
@@ -75,11 +77,7 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		createRegistry.run(data);
 
 		Blocker.delete(id);
-		if (this.cache.has(id)) {
-			return this.cache.get(id)!._patch(data);
-		} else {
-			return this._add(data, true, { id: id, extras: [] });
-		}
+		return this._add(data, true, { id: id, extras: [] });
 	}
 	public has(channel: ChannelResolvable) {
 		const bool = this.fetch(channel) !== null;

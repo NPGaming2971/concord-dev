@@ -1,7 +1,7 @@
-import type { LocaleString, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
+import type { ChannelResolvable, LocaleString, Message, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
 import type { APIMessage } from 'discord.js';
-import type { ChannelRegistry, Group } from '../structures/';
-import type { GroupPermissionsFlagBits, GroupStatusType, RequestState, RequestType } from './enums';
+import type { Ban, ChannelRegistry, Group } from '../structures/';
+import type { BanType, GroupPermissionsFlagBits, GroupStatusType, RequestState, RequestType } from './enums';
 
 export type Maybe<T> = T | null;
 export type DeepPartial<T> = Partial<{ [P in keyof T]: DeepPartial<T[P]> }>;
@@ -33,11 +33,30 @@ export type CommandLoadOptions = {
 
 export type NonNullObject = {} & object;
 
+export type BanResolvable = string | ChannelResolvable | UserResolvable | Ban
+
+export interface BaseAPIBan {
+	target: string
+	executor: string
+	reason: Maybe<string>
+	type: BanType
+	location: Maybe<string>
+	until: Maybe<number>
+}
+
+export interface BaseAPIGroupBan extends BaseAPIBan {
+	type: BanType.Guild | BanType.User
+	location: string
+}
+
+export interface BaseAPIGlobalBan extends BaseAPIBan {
+	type: BanType.Global
+	location: null
+}
+
 export interface APIGroupMessage {
-	url: string;
-	message: APIMessage;
-	group: Group;
-	parentId: [string, string] | [null, null];
+	original: Maybe<Message>;
+	message: APIMessage
 	registry: ChannelRegistry;
 }
 

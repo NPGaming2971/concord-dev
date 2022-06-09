@@ -6,6 +6,12 @@ export enum Events {
 	GroupUpdate = 'groupUpdate',
 }
 
+export enum BanType {
+	User = 'user',
+	Guild = 'guild',
+	Global = 'global'
+}
+
 export declare const GroupPermissionsFlagBits: {
 	readonly KickChannels: bigint
 	readonly BanChannels: bigint;

@@ -1,11 +1,13 @@
 import { CachedManager, Client } from "discord.js";
+import { Ban } from "../structures/general/Ban";
+import type { BanResolvable } from "../typings";
 
-export class GlobalBanManager extends CachedManager<string, any, any> {
+export class GlobalBanManager extends CachedManager<string, Ban, BanResolvable> {
     constructor(client: Client) {
-        super(client, Object)
+        super(client, Ban)
     }
 
-    public fetch() {}
+    public fetch(_ban: BanResolvable) {}
 
     public query() {}
 

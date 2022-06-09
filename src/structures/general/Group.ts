@@ -71,6 +71,8 @@ export class Group extends Base implements Group {
 
 		if (data.data) {
 			if (data.data.channelLimit) this.channelLimit = data.data.channelLimit;
+
+			
 		}
 
 		if (data.ownerId) {

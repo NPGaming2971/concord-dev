@@ -77,14 +77,15 @@ export class ResponseFormatters {
 
 		const icon = (reference.embeds.length || reference.attachments.size) ? Formatters.formatEmoji(Constants.Emojis.Image) : ''
 
+		
+
 		let replyContent = ResponseFormatters.parseMentions(reference)
-			.substring(0, 64)
 			.replace(/(\r\n|\n|\r)/gm, '  ').trim();
 
 		if (reference.content.startsWith('Replying to') && reference.webhookId)
 			replyContent = replyContent.substring(replyContent.indexOf('\u200B') + 1);
 		return (
-			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent}${replyContent.length > 64 ? '...' : ''} ${icon}\n\u200b\n${message.content}`
+			`Replying to ${Formatters.hyperlink(`**\`${reference.author.username}\`**`, `<${baseURL + Routes.user(reference.author.id)}>`)}\n> ${replyContent.substring(0, 64)}${replyContent.length > 64 ? '...' : ''} ${icon}\n\u200b\n${message.content}`
 		);
 	}
 

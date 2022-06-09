@@ -1,4 +1,4 @@
-import { Awaitable, Base, Client, If, MessageResolvable, WebhookClient, WebhookMessageOptions } from 'discord.js';
+import { Awaitable, Base, Client, If, MessageResolvable, Webhook, WebhookClient, WebhookMessageOptions } from 'discord.js';
 import type { APIMessage } from 'discord.js';
 import type { APIChannelRegistry, RegisterableChannel } from '../../typings';
 
@@ -74,7 +74,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 		return this.createTempClient((client) => client.deleteMessage(target));
 	}
 
-	public fetchWebhook() {
+	public fetchWebhook(): Promise<Webhook> {
 		if (!this.isRegistered()) throw new Error('CHANNEL_UNREGISTERED', this.channel);
 
 		const { token, id } = Util.destructureWebhookURL(this.webhook!);

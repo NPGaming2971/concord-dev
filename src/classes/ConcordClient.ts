@@ -45,7 +45,8 @@ export class ConcordClient extends Client<true> {
 				ThreadManager: 0,
 				ThreadMemberManager: 0,
 				GuildEmojiManager: 0,
-				GuildScheduledEventManager: 0
+				GuildScheduledEventManager: 0,
+				GroupMessageManager: 400
 			})
 		});
 		this.commands.load({
@@ -74,9 +75,9 @@ declare module 'discord.js' {
 	interface Caches {
 		CommandManager: [manager: typeof CommandManager, holds: typeof Command];
 		GroupManager: [manager: typeof GroupManager, holds: typeof Group];
-		ChannelRegistryManager: [manager: ChannelRegistryManager, holds: typeof ChannelRegistry];
-		GroupRegistryManager: [manager: GroupRegistryManager, holds: typeof ChannelRegistry];
-		GroupMessageManager: [manager: GroupMessageManager, holds: typeof GroupMessage];
+		ChannelRegistryManager: [manager: typeof ChannelRegistryManager, holds: typeof ChannelRegistry];
+		GroupRegistryManager: [manager: typeof GroupRegistryManager, holds: typeof ChannelRegistry];
+		GroupMessageManager: [manager: typeof GroupMessageManager, holds: typeof GroupMessage];
 	}
 	interface ClientEvents {
 		groupCreate: [group: Group];

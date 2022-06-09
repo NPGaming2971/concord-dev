@@ -22,8 +22,9 @@ export class MessageCreateEvent extends Listener<'messageUpdate'> {
 			return;
 		const registry = newMessage.client.registry.fetch(newMessage.channelId);
 
-		if (!registry || !registry.groupId || !registry.webhook) return;
-		//Responding
-		//registry.group?.messages.edit(newMessage);
+
+		if (!registry || !registry.group || !registry.webhook) return;
+
+		registry.group.messages.edit(newMessage, { original: newMessage, attachments: [] });
 	}
 }
