@@ -25,6 +25,11 @@ export class EvalCommand extends Command {
 						name: 'async-mode',
 						type: ApplicationCommandOptionType.Boolean,
 						description: 'Whether to enable async mode (allow you to use top level await).',
+					},
+					{
+						name: 'prepend-return',
+						type: ApplicationCommandOptionType.Boolean,
+						description: 'Prepending return on code string.'
 					}
 				]
 			},
@@ -39,6 +44,7 @@ export class EvalCommand extends Command {
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
 		const asyncMode = interaction.options.getBoolean('async-mode') ?? true;
+		const prependReturn = interaction.options.getBoolean('prepend-return') ?? true
 
 		const id = interaction.id;
 
@@ -70,7 +76,7 @@ export class EvalCommand extends Command {
 			try {
 				const executionStart = new Date().getTime();
 
-				let evaled = await eval(asyncMode ? `(async () => { ${codeString} })()` : `(() => { ${codeString} })()`)
+				let evaled = await eval(asyncMode ? `(async () => { ${prependReturn ? 'return' : ''} ${codeString} })()` : `(() => { ${prependReturn ? 'return' : ''} ${codeString} })()`)
 				const executionEnd = new Date().getTime();
 				const returnType = typeof evaled;
 				if (typeof evaled !== 'string') evaled = inspect(evaled);
