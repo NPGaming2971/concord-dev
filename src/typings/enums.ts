@@ -3,7 +3,10 @@ export enum Events {
 	GroupMemberRemove = 'groupMemberRemove',
 	GroupCreate = 'groupCreate',
 	GroupDelete = 'groupDelete',
-	GroupUpdate = 'groupUpdate',
+	GroupUpdate = 'groupUpdate'
+}
+export enum SettingCategory {
+	Appearances = 'Appearances'
 }
 
 export enum BanType {
@@ -13,18 +16,24 @@ export enum BanType {
 }
 
 export declare const GroupPermissionsFlagBits: {
-	readonly KickChannels: bigint
+	readonly KickChannels: bigint;
 	readonly BanChannels: bigint;
-	readonly ManageUsers: bigint
+	readonly ManageUsers: bigint;
 	readonly ManageAppearances: bigint;
 	readonly ManageMembers: bigint;
 	readonly Administrator: bigint;
-	readonly ManageRequests: bigint
+	readonly ManageRequests: bigint;
 	readonly ManageRoles: bigint;
 	readonly KickMembers: bigint;
 	readonly BanMembers: bigint;
 	readonly ManageMessages: bigint;
 };
+
+export enum SettingType {
+	String = 'string',
+	Choices = 'choices',
+	Boolean = 'boolean'
+}
 
 export enum RequestType {
 	Connect = 'Connect'

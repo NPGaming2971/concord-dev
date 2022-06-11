@@ -39,7 +39,6 @@ export class EvalCommand extends Command {
 
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>) {
 		const asyncMode = interaction.options.getBoolean('async-mode') ?? true;
-		const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
 		const id = interaction.id;
 
@@ -70,9 +69,8 @@ export class EvalCommand extends Command {
 			await modalInteraction.deferReply();
 			try {
 				const executionStart = new Date().getTime();
-				let evaled = asyncMode
-					? await new AsyncFunction('interaction', 'require', `return ${codeString}`)(modalInteraction, require)
-					: new Function('interaction', 'require', `return ${codeString}`)(modalInteraction, require);
+
+				let evaled = await eval(asyncMode ? `(async () => { ${codeString} })()` : `(() => { ${codeString} })()`)
 				const executionEnd = new Date().getTime();
 				const returnType = typeof evaled;
 				if (typeof evaled !== 'string') evaled = inspect(evaled);

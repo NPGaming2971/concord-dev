@@ -62,7 +62,7 @@ export class RegisterCommand extends Command {
 
 			if (!passed.size) return this.createWebhook(interaction, channel);
 
-			interaction.client.registry.create({ channel, url: passed.first()!.url, groupId: null });
+			interaction.client.registry.create({ channelId: channel, url: passed.first()!.url, groupId: null });
 
 			failed.map((e) => e.delete());
 
@@ -76,7 +76,7 @@ export class RegisterCommand extends Command {
 		channel
 			.createWebhook('Concord', { reason: `Registeration authorized by ${interaction.user.tag}` })
 			.then(async (webhook) => {
-				webhook.client.registry.create({ channel, url: webhook.url, groupId: null });
+				webhook.client.registry.create({ channelId: channel, url: webhook.url, groupId: null });
 				interaction.editReply("Successfully registered this channel. Now it's ready to connect to any Concord groups.");
 			})
 			.catch((_) => interaction.editReply('An error occured.'));
