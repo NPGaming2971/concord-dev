@@ -4,28 +4,32 @@ import type { APIChannelRegistry, RegisterableChannel } from '../../typings';
 
 import { Util } from '../../utils/';
 import { Error } from '../errors/ConcordError';
+import { assignInWith, isUndefined } from 'lodash';
 
 export interface ChannelRegistry<Registered extends boolean = boolean> {
 	channelId: string;
-	webhook: If<Registered, string>
+	webhook: If<Registered, string>;
 	groupId: string | null;
 }
 
 export class ChannelRegistry extends Base implements ChannelRegistry {
+	#data: APIChannelRegistry;
+
 	constructor(client: Client, rawGroupData: APIChannelRegistry) {
 		super(client);
+
+		this.#data = rawGroupData;
 		this._patch(rawGroupData);
 	}
 
 	public _patch(data: APIChannelRegistry) {
-
 		if ('id' in data) {
 			this.channelId = data.id;
 		}
 
-		if ('webhookurl' in data) {
+		if ('url' in data) {
 			//@ts-expect-error
-			this.webhook = data.webhookurl;
+			this.webhook = data.url;
 		}
 
 		if ('groupId' in data) {
@@ -58,7 +62,7 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 
 	public async send(options: WebhookMessageOptions | string): Promise<APIMessage> {
 		this.validateActionConditions();
- 
+
 		return this.createTempClient((client) => client.send(options));
 	}
 
@@ -87,16 +91,15 @@ export class ChannelRegistry extends Base implements ChannelRegistry {
 	}
 
 	public edit(options: GroupEditOptions) {
-		const { fallback } = Util;
-		const { url, groupId } = options;
-
-		const partialData = {
-			channel: this.channel,
-			url: fallback(url, this.webhook),
-			groupId: fallback(groupId, this.groupId)
-		};
+		const partialData = assignInWith(this.toJSON(), { channelId: this.channel, ...options }, (obj, src) => {
+			return isUndefined(src) ? obj : src;
+		});
 
 		return this.client.registry.create(partialData);
+	}
+
+	public override toJSON() {
+		return { ...this.#data };
 	}
 
 	public delete() {

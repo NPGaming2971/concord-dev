@@ -6,13 +6,12 @@ import { GroupRequestManager } from '../../manager/GroupRequestManager';
 import type { APIGroup, DeepPartial } from '../../typings';
 import { Events, GroupStatusType } from '../../typings/enums';
 import { Util } from '../../utils/Util';
-import { cloneDeep, isUndefined } from 'lodash';
+import { assignInWith, cloneDeep, isUndefined } from 'lodash';
 import Settings from '../../../assets/settings';
 
 type SettingValue = string | number | boolean | null;
 export class Group extends Base implements Group {
 	constructor(client: Client, data: APIGroup, database: Database) {
-		
 		super(client);
 
 		this.channels = new GroupRegistryManager(this);
@@ -71,8 +70,6 @@ export class Group extends Base implements Group {
 
 		if (data.data) {
 			if (data.data.channelLimit) this.channelLimit = data.data.channelLimit;
-
-			
 		}
 
 		if (data.ownerId) {
@@ -155,22 +152,16 @@ export class Group extends Base implements Group {
 	}
 
 	public edit(data: DeepPartial<APIGroup>) {
-		const apiGroup = Util.flatten(this.toJSON());
-		const updateData = Util.flatten(data);
+		const apiGroup = this.toJSON();
+		
+		assignInWith(apiGroup, data, (obj, src) => {
+			return isUndefined(src) ? obj : src;
+		});
 
-		if (!Object.values(updateData).length) return;
-
-		for (const [key, value] of Object.entries(updateData)) {
-			const preData = apiGroup[key];
-			apiGroup[key] = Util.fallback(value, preData);
-		}
-
-		//TODO
 		const preGroup = cloneDeep(this);
-		const groupData = Util.unflatten(apiGroup) as APIGroup;
 
-		this.client.database.statements.groupUpdate.run(this.client.database.makeCompatible(groupData));
-		this._patch(groupData);
+		this.client.database.statements.groupUpdate.run(this.client.database.makeCompatible(apiGroup));
+		this._patch(apiGroup);
 
 		this.client.emit(Events.GroupUpdate, preGroup, this);
 	}

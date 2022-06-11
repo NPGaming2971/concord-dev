@@ -68,7 +68,8 @@ export class GroupManager extends CachedManager<string, Group, GroupResolvable> 
 			maxCharacterLimit: 1900,
 			requests: {
 				deleteDuplicate: true
-			}
+			},
+			logChannelId: null
 		};
 	}
 

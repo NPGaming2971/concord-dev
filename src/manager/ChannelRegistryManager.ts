@@ -62,15 +62,15 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 	}
 
 	public create(options: RegistryCreateOptions) {
-		const { channel, url, groupId } = options;
-		const { id, guildId } = this.client.channels.resolve(channel) as RegisterableChannel;
+		const { channelId, url, groupId } = options;
+		const { id, guildId } = this.client.channels.resolve(channelId) as RegisterableChannel;
 
 		const { createRegistry } = this.client.database.statements;
 
 		const data = {
 			id,
 			guildId,
-			webhookurl: url,
+			url,
 			groupId
 		};
 
@@ -80,9 +80,9 @@ export class ChannelRegistryManager extends CachedManager<string, ChannelRegistr
 		return this._add(data, true, { id: id, extras: [] });
 	}
 	public has(channel: ChannelResolvable) {
-		const bool = this.fetch(channel) !== null;
-		Blocker[bool ? 'delete' : 'add'](this.client.channels.resolveId(channel));
-		return bool;
+		const boolean = this.fetch(channel) !== null;
+		Blocker[boolean ? 'delete' : 'add'](this.client.channels.resolveId(channel));
+		return boolean;
 	}
 
 	public override resolveId(resolvable: string | ChannelRegistry<boolean>): string;

@@ -15,7 +15,7 @@ export class DatabaseManager {
 		deleteGroup: 'DELETE FROM groups WHERE id = ?',
 		fetchAllGroups: 'SELECT * FROM groups',
 		fetchAllRegistries: 'SELECT * FROM channels',
-		createRegistry: 'INSERT OR REPLACE INTO channels (id, webhookurl, guildId, groupId) VALUES (@id, @webhookurl, @guildId, @groupId);',
+		createRegistry: 'INSERT OR REPLACE INTO channels (id, url, guildId, groupId) VALUES (@id, @url, @guildId, @groupId);',
 		deleteRegistry: 'DELETE FROM channels WHERE id = ?',
 		getRegistry: 'SELECT * FROM channels WHERE id = ?;',
 	};
@@ -50,7 +50,7 @@ export class DatabaseManager {
 			createTable: {
 				groups: 'CREATE TABLE IF NOT EXISTS groups (tag TEXT PRIMARY KEY NOT NULL UNIQUE, id TEXT NOT NULL UNIQUE, ownerId TEXT NOT NULL, entrance TEXT, data TEXT NOT NULL, appearances TEXT NOT NULL, settings TEXT NOT NULL, locale TEXT NOT NULL, status TEXT NOT NULL, bans TEXT NOT NULL);',
 				channels:
-					'CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY NOT NULL UNIQUE, webhookurl TEXT NOT NULL UNIQUE, guildId TEXT NOT NULL, groupId TEXT, FOREIGN KEY (groupId) REFERENCES groups(id) ON UPDATE CASCADE ON DELETE NO ACTION);'
+					'CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY NOT NULL UNIQUE, url TEXT NOT NULL UNIQUE, guildId TEXT NOT NULL, groupId TEXT, FOREIGN KEY (groupId) REFERENCES groups(id) ON UPDATE CASCADE ON DELETE NO ACTION);'
 			},
 			createIndex: {
 				groupId: 'CREATE UNIQUE INDEX IF NOT EXISTS idx_group_id ON groups (id);',
