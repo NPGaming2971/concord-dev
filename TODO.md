@@ -2,16 +2,18 @@
 
 > ## **Priorized**
 - [ ] \*Fix\* messages management and how the bot stores messages in groups.
+- [ ] Fix settings options
+- [ ] Rework on pagination.
+- [ ] Refactor error handling on all commands and event handlers
 
 > ## **Features/Commands**
-  
-None
+- [ ] Improve /help to parse options
+
 > ## **Short Terms**
 - [ ] Make a BaseError class. Generalize Errors.
 - [ ] Parse output from `Result`
 - [ ] Add control settings for requests ~~`deleteDuplicate`~~, `autoAction: { /* Delete requests when 'message' contains */ }`
-- [ ] Change RegistryManager to obtain all registries instead of getting upon fetching groups.
-- [ ] Utilize SQlite transaction. Make "requests bucket" for statements.
+- [ ] Utilize SQlite transaction. 
 - [ ] Log channel for group update.
 - [ ] Setting type: 'list'
 

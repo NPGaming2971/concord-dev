@@ -1,3 +1,4 @@
+
 import type { Client } from 'discord.js';
 import { Listener } from '../../structures';
 import type { RegisterableChannel } from '../../typings';
@@ -32,7 +33,7 @@ export default class WebhookUpdateEvent extends Listener<'webhookUpdate'> {
 
 		if (violation.size) {
 			violation.map(async (i) => {
-				const matchingRegistry = channel.client.registry.query({ webhookurl: i.url })[0];
+				const matchingRegistry = channel.client.registry.query({ url: i.url })[0];
 
 				console.log(matchingRegistry);
 

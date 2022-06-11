@@ -25,8 +25,14 @@ export class EditMessage extends Command {
 
 		if (!registry?.group || !registry.isRegistered()) return interaction.editReply('Can not audit this message.');
 
-		//const parent = registry.group.messages.getParentOf(message)!;
-		return
-		//return registry.group.messages.delete(parent);
+		const cache = registry.group.messages.cache.get(message.id);
+
+		const original = cache?.original
+
+		if (!cache || !original) return interaction.editReply('Can not audit this message.')
+		
+		registry.group.messages.delete(original);
+
+		return interaction.editReply('Success')
 	}
 }
