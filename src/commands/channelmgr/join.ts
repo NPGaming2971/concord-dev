@@ -1,3 +1,4 @@
+//TODO: refactor
 import { ActionRowBuilder, TextInputBuilder } from '@discordjs/builders';
 import { from, isOk } from '@sapphire/result';
 import {
@@ -56,7 +57,7 @@ export class JoinCommand extends Command {
 		await interaction.deferReply();
 		const group = interaction.client.groups.cache.find((i) => i.tag === targetGroup || i.id === targetGroup);
 
-		if (!group) return interaction.editReply(prepareError(new Error('NON_EXISTENT_RESOURCE', Group.name, targetGroup)));
+		if (!group) throw new Error('NON_EXISTENT_RESOURCE', Group.name, targetGroup);
 
 		const registry = channel.fetchRegistry();
 

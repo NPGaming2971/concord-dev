@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ChatInputCommandInteraction } from 'discord.js';
-import { Command, ResponseFormatters } from '../../structures/';
+import { Command } from '../../structures/';
 
 export class CreateCommand extends Command {
 	constructor() {
@@ -24,11 +24,8 @@ export class CreateCommand extends Command {
 
 		const tag = interaction.options.getString('tag', true);
 
-		try {
-			interaction.client.groups.create(tag, { owner: interaction.user });
-			return interaction.editReply('success');
-		} catch (err: any) {
-			return interaction.editReply(ResponseFormatters.prepareError(err))
-		}
+		interaction.client.groups.create(tag, { owner: interaction.user });
+		interaction.editReply('success');
+		return;
 	}
 }

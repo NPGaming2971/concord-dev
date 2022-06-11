@@ -1,7 +1,6 @@
 import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
-import { ResponseFormatters, Command, CooldownScope, Error } from '../../structures/';
+import { Command, CooldownScope, Error } from '../../structures/';
 import type { RegisterableChannel } from '../../typings';
-import { Constants } from '../../typings/constants';
 import { Time } from '../../typings/enums';
 
 export class RegisterCommand extends Command {
@@ -47,12 +46,12 @@ export class RegisterCommand extends Command {
 
 		await interaction.deferReply();
 
-		const { prepareError } = ResponseFormatters;
 		if (!channel.permissionsFor(interaction.guild.members.me!)?.has('ManageWebhooks'))
-			return interaction.editReply(prepareError(new Error('MISSING_CLIENT_PERMISSIONS', 'ManageWebhooks')));
+			throw new Error('MISSING_CLIENT_PERMISSIONS', 'ManageWebhooks');
 
-		if (channel.fetchRegistry()) {
-			return interaction.editReply(ResponseFormatters.appendEmojiToString(Constants.Emojis.Failure, 'This channel is already registered.'));
+		const registry = channel.fetchRegistry()
+		if (registry) {
+			throw new Error('DUPLICATED_RESOURCE', 'Property', 'groupId', `registry '${registry.channelId}'`)
 		}
 
 		const webhooks = (await channel.fetchWebhooks()).filter((e) => e.owner?.id === interaction.client.user?.id);

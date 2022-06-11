@@ -52,7 +52,7 @@ export class UnregisterCommand extends Command {
 			interaction,
 			options,
 			async (i) => {
-				const result = await fromAsync<any, DiscordAPIError>(() => this.unregister(registry));
+				const result = await fromAsync<any, DiscordAPIError>(this.unregister(registry));
 
 				console.log(result)
 				if (!isOk(result)) {

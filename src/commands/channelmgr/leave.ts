@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction } from 'discord.js';
-import { Command, ResponseFormatters } from '../../structures/';
+import { Command, Error, ResponseFormatters } from '../../structures/';
 import { Constants } from '../../typings/constants';
 
 export class LeaveCommand extends Command {
@@ -28,14 +28,13 @@ export class LeaveCommand extends Command {
 
 		if (!channel.isRegisterable()) return;
 
-		const targetGroup = channel.fetchRegistry()?.group;
+		const registry = channel.fetchRegistry()
+		const targetGroup = registry?.group
 
 		await interaction.deferReply();
 
 		if (!targetGroup)
-			return interaction.editReply(
-				ResponseFormatters.appendEmojiToString(Constants.Emojis.Failure, `This channel is not a member of any group.`)
-			);
+			throw new Error('NON_EXISTENT_RESOURCE', 'Property', 'groupId', `registry '${registry?.channelId}'`)
 
 		targetGroup.channels.kick(channel);
 		interaction.editReply(`Left ${targetGroup}`);

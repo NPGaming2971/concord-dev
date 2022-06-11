@@ -4,7 +4,7 @@ import {
 	ChatInputCommandInteraction,
 	AutocompleteInteraction,
 } from "discord.js";
-import { Command } from "../../structures/";
+import { Command, Error } from "../../structures/";
 import Fuse from "fuse.js";
 import { Constants } from "../../typings/constants";
 export class HelpCommand extends Command {
@@ -36,12 +36,12 @@ export class HelpCommand extends Command {
 			);
 
 			if (!command)
-				return interaction.editReply("Failed to find any command with such name.");
+				throw new Error('NON_EXISTENT_RESOURCE', Command.name, targetCommand, 'Concord command registry')
 
 			if (
 				command.preconditions?.elevatedPermissions &&
 				!Constants.Administrators.includes(interaction.user.id)) 
-				return interaction.editReply('You are not authorized to view this resources.')
+				throw new Error('ELEVATED_PERMISSION_REQUIRED')
 
 			interaction.editReply({ embeds: [renderCommandEmbed(command)] });
 		}

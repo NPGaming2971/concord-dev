@@ -1,7 +1,7 @@
 import { ActionRowBuilder } from '@discordjs/builders';
 import { ApplicationCommandOptionType, AutocompleteInteraction, ChatInputCommandInteraction, EmbedBuilder, SelectMenuBuilder } from 'discord.js';
 import { upperFirst } from 'lodash';
-import { Command, Error, Group, ResponseFormatters } from '../../structures';
+import { Command, Error, Group } from '../../structures';
 import { Constants } from '../../typings/constants';
 
 export class ManageCommand extends Command {
@@ -53,7 +53,7 @@ export class ManageCommand extends Command {
 		const groupInput = interaction.options.getString('target-group', true);
 
 		const group = interaction.client.groups.fetch(groupInput);
-		if (!group) return interaction.editReply(ResponseFormatters.prepareError(new Error('NON_EXISTENT_RESOURCE', Group.name, groupInput)));
+		if (!group) throw new Error('NON_EXISTENT_RESOURCE', Group.name, groupInput);
 		this[`handle${upperFirst(subcommand) as Subcommand}`](interaction, group);
 		return;
 	}
