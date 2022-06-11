@@ -13,8 +13,10 @@ export class DebugEvent extends Listener<'debug'> {
 	public run(string: string) {
 		if (/Session Limit Information/g.test(string)) {
 			Logger.debug(this.constructor.name, string);
+		}
 
-			this.unload();
+		if (/429/g.test(string)) {
+			Logger.debug(this.constructor.name, string)
 		}
 	}
 }
