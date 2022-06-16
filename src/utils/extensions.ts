@@ -1,4 +1,4 @@
-import { BaseGuildTextChannel, Channel, ChannelType } from 'discord.js';
+import { BaseGuildTextChannel, Channel, VoiceChannel } from 'discord.js';
 import type { ChannelRegistry, Group } from '../structures';
 import type { RegisterableChannel } from '../typings';
 import { ApplyToClass } from './decorators';
@@ -19,28 +19,31 @@ Additional parameter must be specified from the 2nd param onward.
 
 export class Extensions {
 	//@ts-expect-error
-	@ApplyToClass(BaseGuildTextChannel)
+	@ApplyToClass([BaseGuildTextChannel])
 	static fetchRegistry(channel: BaseGuildTextChannel) {
 		return channel.client.registry.fetch(channel.id);
 	}
 
 	//@ts-expect-error
-	@ApplyToClass(BaseGuildTextChannel, { isGetter: true })
-	static group(channel: BaseGuildTextChannel) {
+	@ApplyToClass([BaseGuildTextChannel], { isGetter: true })
+	static group(channel: BaseGuildTextChannel | VoiceChannel) {
 		const registry = channel.fetchRegistry();
 		return registry?.group;
 	}
 
-	@ApplyToClass(Channel)
+	@ApplyToClass([Channel])
 	static isRegisterable(channel: Channel) {
-		return [ChannelType.GuildText, ChannelType.GuildNews].includes(channel.type);
+		return Reflect.has(channel, 'createWebhook');
 	}
 }
 
 declare module 'discord.js' {
 	interface BaseGuildTextChannel {
 		fetchRegistry(): ChannelRegistry | null;
-        get group(): Group | null
+		get group(): Group | null;
+	}
+	interface VoiceChannel {
+		fetchRegistry(): ChannelRegistry | null;
 	}
 	interface Channel {
 		isRegisterable(): this is RegisterableChannel;

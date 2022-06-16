@@ -22,20 +22,22 @@ type ApplyToClassOptions = {
 	isGetter?: boolean;
 };
 
-export function ApplyToClass<T>(targetClass: Constructable<T>, options: ApplyToClassOptions = {}): MethodDecorator {
+export function ApplyToClass(targetClasses: Constructable<any>[], options: ApplyToClassOptions = {}): MethodDecorator {
 	const { makeStatic = false, isGetter = false } = options;
 
 	return (target: object, key: string | symbol) => {
 		const functionToApply = Reflect.get(target, key);
 
-		const defineTarget = makeStatic ? targetClass : targetClass.prototype;
+		for (const targetClass of targetClasses) {
+			const defineTarget = makeStatic ? targetClass : targetClass.prototype;
 
-		Object.defineProperty(defineTarget, key, {
-			get() {
-				return isGetter ? functionToApply.call(target, this) : functionToApply.bind(target, this);
-			},
-			enumerable: false
-		});
+			Object.defineProperty(defineTarget, key, {
+				get() {
+					return isGetter ? functionToApply.call(target, this) : functionToApply.bind(target, this);
+				},
+				enumerable: false
+			});
+		}
 	};
 }
 
