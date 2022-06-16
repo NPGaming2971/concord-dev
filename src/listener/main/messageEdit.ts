@@ -10,8 +10,6 @@ export class MessageCreateEvent extends Listener<'messageUpdate'> {
 			!newMessage.inGuild() ||
 			// Ignore message from threads.
 			newMessage.channel.isThread() ||
-			// Ignore messages from voices.
-			newMessage.channel.isVoice() ||
 			// Refuse to work with webhooks messages. Avoid duplications.
 			newMessage.webhookId ||
 			// Refuse to work with system messages.

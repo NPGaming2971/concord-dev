@@ -10,8 +10,6 @@ export class MessageCreateEvent extends Listener<'messageDelete'> {
 			!message.inGuild() ||
 			// Ignore message from threads.
 			message.channel.isThread() ||
-			// Ignore messages from voices.
-			message.channel.isVoice() ||
 			// Refuse to work with webhooks messages. Avoid duplications.
 			message.webhookId ||
 			// Refuse to work with system messages.

@@ -1,25 +1,19 @@
-import { ChannelType, Client, Formatters, Interaction, MessagePayload, PermissionResolvable } from 'discord.js';
+import { AnyInteraction, ChannelType, Client, Formatters, Interaction, InteractionType, PermissionResolvable } from 'discord.js';
 import { Command, Error, Listener, ResponseFormatters } from '../structures/';
 import { Constants } from '../typings/constants';
 import { Converters } from '../utils/Converters';
-import { InteractionResponseType, Routes } from 'discord-api-types/v10';
+import { InteractionResponseType, OAuth2Scopes, Routes } from 'discord-api-types/v10';
 export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 	constructor(client: Client) {
 		super(client, { name: 'interactionCreate' });
 	}
-	public async run(interaction: Interaction) {
+	public async run(interaction: AnyInteraction) {
 		if (!interaction.inCachedGuild()) {
-			interaction.client.rest.post(Routes.interactionCallback(interaction.id, interaction.token), {
-				body: {
-					type: InteractionResponseType.ChannelMessageWithSource,
-					data: new MessagePayload(interaction, { content: 'Location not allowed or missing bot scope upon inviting.' }),
-					auth: false
-				}
-			});
+			this.handleUncachedGuild(interaction as Interaction<'raw'>);
 			return;
 		}
 
-		if (interaction.isCommand()) {
+		if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
 			try {
 				const command = interaction.client.commands.cache.get(interaction.commandName);
 				if (!command) throw new Error('NON_EXISTENT_RESOURCE', Command.name, interaction.commandName, 'Concord.');
@@ -41,10 +35,12 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 					if (interaction.isUserContextMenuCommand() && command.supportUserContextMenu()) await command.userContextMenuRun(interaction);
 				}
 			} catch (err: unknown) {
-				console.dir(err, { depth: null });
+				if (!(err instanceof Error)) console.dir(err, { depth: null });
+
 				interaction[interaction.replied || interaction.deferred ? 'editReply' : 'reply'](ResponseFormatters.prepareError(err as Error));
+
 			}
-		} else if (interaction.isAutocomplete()) {
+		} else if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
 			const command = interaction.client.commands.cache.get(interaction.commandName);
 			if (!command) return interaction.respond([{ name: 'Unknown command.', value: 'unknown' }]);
 
@@ -52,6 +48,26 @@ export class InteractionCreateEvent extends Listener<'interactionCreate'> {
 				await command.autocompleteRun(interaction);
 			}
 		}
+	}
+
+	public handleUncachedGuild(interaction: Interaction<'raw'>) {
+		const inviteLink = interaction.client.generateInvite({
+			disableGuildSelect: true,
+			scopes: [OAuth2Scopes.ApplicationsCommands, OAuth2Scopes.Bot],
+			guild: interaction.guildId ?? undefined,
+			permissions: []
+		});
+
+		interaction.client.rest.post(Routes.interactionCallback(interaction.id, interaction.token), {
+			body: {
+				type: InteractionResponseType.ChannelMessageWithSource,
+				data: {
+					content: `Location not allowed or missing bot scope upon inviting.${interaction.guildId ? `\nPlease reinvite the bot: ${Formatters.hyperlink('Invite Link', inviteLink)}` : ''}`
+				},
+				auth: false
+			}
+		});
+		return;
 	}
 
 	public handlePrecondtions(command: Command, interaction: Interaction<'cached'>) {

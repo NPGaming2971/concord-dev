@@ -5,8 +5,8 @@ export const Constants = {
 	DefaultColor: 0x5e92cc,
 	DevelopmentGuildId: ['755892553827483799', '847874027149721680'],
 	Administrators: ['792645340632317992'],
-	BaseModalFilter: (interaction: Interaction<'cached'>, customId: string) => {
-		return (m: ModalSubmitInteraction) => m.user.id === interaction.user.id && m.customId === customId;
+	BaseModalFilter: (interaction: Interaction, customId: string) => {
+		return (m: ModalSubmitInteraction) => interaction.inCachedGuild() && m.user.id === interaction.user.id && m.customId === customId;
 	},
 	BaseFilter: (context: Interaction<'cached'> | Message) => async (i: MessageComponentInteraction) => {
 
