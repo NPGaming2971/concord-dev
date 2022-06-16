@@ -19,7 +19,7 @@ Additional parameter must be specified from the 2nd param onward.
 
 export class Extensions {
 	//@ts-expect-error
-	@ApplyToClass([BaseGuildTextChannel])
+	@ApplyToClass([BaseGuildTextChannel, VoiceChannel])
 	static fetchRegistry(channel: BaseGuildTextChannel) {
 		return channel.client.registry.fetch(channel.id);
 	}
