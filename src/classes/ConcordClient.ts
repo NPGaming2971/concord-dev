@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Options, Partials } from 'discord.js';
+import { Client, ClientOptions } from 'discord.js';
 import { CommandManager } from '../manager/CommandManager';
 import { Enumerable } from '../utils/decorators';
 import { Logger } from './Logger';
@@ -11,8 +11,11 @@ import type { GroupRegistryManager } from '../manager/GroupRegistryManager';
 import type { GroupMessageManager } from '../manager/GroupMessageManager';
 import type { GroupMessage } from '../structures/general/GroupMessage';
 import { DatabaseManager } from '../manager/DatabaseManager';
+import type { CommandLoadOptions } from '../typings';
+//import { GlobalBanManager } from '../manager/GlobalBanManagerer';
 
 export class ConcordClient extends Client<true> {
+
 	@Enumerable(false)
 	public override logger = Logger;
 
@@ -27,40 +30,15 @@ export class ConcordClient extends Client<true> {
 	public override registry: ChannelRegistryManager = new ChannelRegistryManager(this);
 
 	@Enumerable(false)
-	public override groups: GroupManager = new GroupManager(this, this.database.database);
+	public override groups: GroupManager = new GroupManager(this);
 
-	constructor() {
-		super({
-			intents: [
-				GatewayIntentBits.Guilds,
-				GatewayIntentBits.GuildMessages,
-				GatewayIntentBits.GuildWebhooks,
-				GatewayIntentBits.MessageContent,
-				GatewayIntentBits.GuildMessageReactions
-			],
-			partials: [Partials.User, Partials.GuildMember, Partials.Message],
-			makeCache: Options.cacheWithLimits({
-				...Options.DefaultMakeCacheSettings,
-				PresenceManager: 0,
-				ThreadManager: 0,
-				ThreadMemberManager: 0,
-				GuildEmojiManager: 0,
-				GuildScheduledEventManager: 0,
-				GroupMessageManager: 400
-			})
-		});
-		this.commands.load({
-			path: {
-				commands: `${process.cwd()}/src/commands/`,
-				events: `${process.cwd()}/src/listener/`
-			},
-			options: {
-				errorOnNoMatches: true,
-				subfolderDepth: 1,
-				deploy: true,
-				extensions: ['ts']
-			}
-		});
+
+//	@Enumerable(false)
+//	public override bans: GlobalBanManager = new GlobalBanManager(this)
+
+	constructor(options: ClientOptions & { commands: CommandLoadOptions }) {
+		super(options);
+		this.commands.load(options.commands);
 	}
 }
 
