@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 
 import Fuse from 'fuse.js';
-import { isEmpty, isNull, isNumber, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isNull, isNumber, isUndefined } from 'lodash';
 import Settings, { ImageSetting, Setting, StringSetting } from '../../../assets/settings';
 import { Command, Error, Group } from '../../structures/';
 import { AutocompleteCommon } from '../../structures/utils/AutocompleteCommon';
@@ -100,7 +100,7 @@ export class SettingsCommand extends Command {
 							break;
 						}
 						case 'settings/toggle': {
-							newValue = !groupData[setting.path];
+							newValue = !Boolean(groupData[setting.path]);
 							break;
 						}
 						case 'settings/setNewValue': {
@@ -191,7 +191,7 @@ export class SettingsCommand extends Command {
 		}
 
 		if (setting.isBoolean()) {
-			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle');
+			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
 			baseButtonActionRow.setComponents([toggleButton, resetButton]);
 		}
 
@@ -263,7 +263,7 @@ export class SettingsCommand extends Command {
 
 		if (format) result = Formatters.inlineCode(value);
 
-		if (isUndefined(value) || isNull(value) || (!isNumber(value) && isEmpty(value))) {
+		if (isUndefined(value) || isNull(value) || (!isNumber(value) && !isBoolean(value) && isEmpty(value))) {
 			result = 'Not set'
 		}
 		return String(result ?? value);
