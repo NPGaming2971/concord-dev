@@ -323,7 +323,16 @@ const data: APISettingData[] = [
 			maxWidth: 1080,
 			maxHeight: 1920
 		}
-	}
+	}, {
+		name: 'Delete Duplicate',
+		description: 'Automatically delete duplicated requests from the same channel.',
+		default: true,
+		path: 'settings.requests.deleteDuplicate',
+		type: SettingType.Boolean,
+		help: {
+			category: SettingCategory.Requests
+		}
+	},
 ];
 
 export interface Setting {
@@ -405,43 +414,7 @@ export interface ChoicesSetting extends Setting {
 }
 export default data.map((i) => new Setting(i));
 
-// 	public validateSetting() {
-// 		if (this.isString()) {
-// 			if (this.default && !this.default.length) throw new Error('Default field can not be empty.');
-
-// 			if (this.path && !this.path.length) throw new Error('Path field can not be empty.');
-// 		}
-// 	}
-
 // const data: SettingData[] = [
-// 	{
-// 		name: 'Delete Duplicate',
-// 		description: 'Automatically delete duplicated requests from the same channel.',
-// 		default: true,
-// 		path: 'settings.requests.deleteDuplicate',
-// 		type: SettingType.Boolean,
-// 		help: {
-// 			category: CategoryType.Requests
-// 		}
-// 	},
-//
-// 	{
-// 		name: 'Max Character Limit',
-// 		path: 'settings.maxCharacterLimit',
-// 		default: 2000,
-// 		type: SettingType.Number,
-// 		description: 'The character limit of a message sent in your group.',
-// 		help: {
-// 			category: CategoryType.Appearances
-// 		},
-// 		restraints: {
-// 			range: [0, 1900]
-// 		},
-// 		validate: function (value: number) {
-// 			const range = this.restraints?.range;
-// 			validateNumberRange(value, range);
-// 		}
-// 	}, {
 // 	{
 // 		name: 'Log Channel',
 // 		path: 'settings.logChannelId',
@@ -456,17 +429,6 @@ export default data.map((i) => new Setting(i));
 // 		}
 // 	}
 // ];
-
-// function validateImageSize(buffer: Buffer, [w = Infinity, h = Infinity]: [number, number] = [Infinity, Infinity]) {
-// 	const dimensions = imageSize(buffer);
-
-// 	if (!dimensions.type) throw new Error(`Unsupported image type.`);
-
-// 	if (dimensions.height! > h || dimensions.width! > w) {
-// 		throw new Error(`Invalid image size (${dimensions.width}x${dimensions.height}).`);
-// 	}
-// 	return;
-// }
 
 // function validateLogChannel(value: string, group: Group, user: User) {
 // 	const existing = group.client.channels.cache.get(value);

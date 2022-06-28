@@ -85,7 +85,7 @@ export interface APIGroupRequest {
 	state: RequestState;
 }
 
-type APISettingData = APIStringSetting | APIChoicesSetting | APINumberSetting | APIImageSetting;
+type APISettingData = APIStringSetting | APIChoicesSetting | APINumberSetting | APIImageSetting | APIBooleanSetting;
 
 interface APINumberSetting extends BaseAPISetting {
 	type: SettingType.Number;
@@ -94,6 +94,10 @@ interface APINumberSetting extends BaseAPISetting {
 		maxValue?: number;
 		minValue?: number;
 	};
+}
+
+interface APIBooleanSetting extends BaseAPISetting {
+	type: SettingType.Boolean;
 }
 
 interface APIImageSetting extends BaseAPISetting {

@@ -5,15 +5,18 @@
 - [ ] Fix settings options
 - [ ] Rework on pagination.
 - [ ] Refactor error handling on all commands and event handlers
+- [ ] Refactor commands.
+- [ ] Rewrite on how Concord stores messages
 
 > ## **Features/Commands**
 - [ ] Improve /help to parse options
 
-> ## **Short Terms**
-- [ ] Make a BaseError class. Generalize Errors.
+> ## **Task**
+- [x] Rewrite a little of CommandManager and ConcordClient. Allows specifying options on constructor instead of hardcoding.
+- [x] Make a BaseError class. Generalize Errors.
 - [ ] Parse output from `Result`
 - [ ] Add control settings for requests ~~`deleteDuplicate`~~, `autoAction: { /* Delete requests when 'message' contains */ }`
-- [ ] Utilize SQlite transaction. 
+- [x] Utilize SQlite transaction. 
 - [ ] Log channel for group update.
 - [ ] Setting type: 'list'
 
@@ -25,6 +28,7 @@
 - [ ] Split commands into mono-functions
 - [ ] Throw errors on methods instead of handling it on commands.
 - [ ] Migrate to PostgreSQL
+- [ ] Switch to Prisma
 
 > ## **Finished**
 - [x] ~~Handle group type on `/join`~~
