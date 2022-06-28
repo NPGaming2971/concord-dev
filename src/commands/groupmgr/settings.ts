@@ -1,31 +1,35 @@
+import { ModalBuilder } from '@discordjs/builders';
+import { isOk, ok } from '@sapphire/result';
 import {
+	ActionRowBuilder,
 	ApplicationCommandOptionType,
 	AutocompleteInteraction,
 	ButtonBuilder,
 	ButtonStyle,
 	ChatInputCommandInteraction,
 	EmbedBuilder,
-	ActionRowBuilder,
 	Formatters,
 	MessageComponentInteraction,
-	TextInputStyle,
-	ModalBuilder,
+	ModalMessageModalSubmitInteraction,
+	SelectMenuBuilder,
 	TextInputBuilder,
-	SelectMenuBuilder
+	TextInputStyle
 } from 'discord.js';
 
-import { Command, Error, Group, ResponseFormatters } from '../../structures/';
-import Settings, { Setting } from '../../../assets/settings';
 import Fuse from 'fuse.js';
-import { Util } from '../../utils/';
-import { fromAsync, isOk } from '@sapphire/result';
+import { isEmpty, isNull, isNumber, isUndefined } from 'lodash';
+import Settings, { ImageSetting, Setting, StringSetting } from '../../../assets/settings';
+import { Command, Error, Group } from '../../structures/';
+import { AutocompleteCommon } from '../../structures/utils/AutocompleteCommon';
 import { Constants } from '../../typings/constants';
+import { Util } from '../../utils';
+
 export class SettingsCommand extends Command {
 	constructor() {
 		super({
 			data: {
 				name: 'settings',
-				description: 'Receive the bot ping',
+				description: 'Change various settings of your group.',
 				options: [
 					{
 						name: 'target-group',
@@ -50,195 +54,188 @@ export class SettingsCommand extends Command {
 		});
 	}
 	public override async chatInputRun(interaction: ChatInputCommandInteraction<'cached'>): Promise<any> {
+		// Getting user input.
 		const inputGroup = interaction.options.getString('target-group', true);
 		const inputOptionName = interaction.options.getString('option-name');
+
+		// Ephemeral options
 		const ephemeral = interaction.options.getBoolean('ephemeral') ?? false;
 
-		const option = Settings.find((i) => i.path === inputOptionName);
+		const setting = Settings.find((setting) => setting.path === inputOptionName);
 
-		if (!option) return interaction.reply('No such option.');
-
-		const hidden = (option.isString() && option.hidden) || ephemeral;
-
-		await interaction.deferReply({ ephemeral: hidden });
+		if (!setting) return interaction.reply('No such thing.');
+		await interaction.deferReply({ ephemeral: setting.ephemeral || ephemeral });
 
 		const group = interaction.client.groups.fetch(inputGroup);
-		if (!group) return interaction.editReply(ResponseFormatters.prepareError(new Error('NON_EXISTENT_RESOURCE', Group.name, inputGroup)));
+		if (!group) throw new Error('UnknownResource', Group.name, inputGroup);
+
+		// Check user eligibility.
+		if (group.ownerId !== interaction.user.id) throw new Error('ElevatedPermissionsRequired');
+
+		// Check setting preconditions.
+		const preconditions = setting.preconditions(group, interaction.user);
 
 		const groupData = Util.flatten(group.toJSON());
-		const embed = this.appendCurrentValue(option, groupData);
 
-		const response = await interaction.editReply({ embeds: [embed], components: this.renderComponents(option) });
+		const response = await interaction.editReply({
+			embeds: [this.renderEmbed(setting, { group, currentValue: groupData[setting.path], errorMessage: preconditions.error?.message })],
+			components: this.renderComponents(setting, !!preconditions.error?.message)
+		});
 
-		const filter = (i: MessageComponentInteraction) => {
-			if (i.user.id === interaction.user.id) return true;
-			else {
-				i.reply({
-					content: 'Not your menu.',
-					ephemeral: true
-				});
-				return false;
-			}
-		};
-
-		const collector = response.createMessageComponentCollector({ filter, idle: 15000 });
-
+		const collector = response.createMessageComponentCollector({ filter: Constants.BaseFilter(interaction), idle: 35000 });
 		collector
-			.on('collect', async (i): Promise<any> => {
+			.on('collect', async (i) => {
+				const baseOptions = { interaction: i, setting, group, data: groupData };
+				let newValue;
+				let interaction: ModalMessageModalSubmitInteraction | MessageComponentInteraction = i;
+
 				if (i.isSelectMenu()) {
-					i.deferUpdate();
-					const newValue = i.values[0];
-					updateGroup({ group, interaction, newValue, option });
+					newValue = i.values[0];
 				}
 
 				if (i.isButton()) {
-					if (i.customId === 'settings/toggle') {
-						i.deferUpdate();
-						updateGroup({ newValue: !groupData[option.path], option, group, interaction });
-					}
-
-					if (i.customId === 'settings/resetToDefault') {
-						i.deferUpdate();
-						updateGroup({ newValue: option.default, option, group, interaction });
-					}
-
-					if (i.customId === 'settings/setNewValue') {
-						if (!option.isString()) return;
-
-						const [min, max] = option.restraints?.lengthRange ?? [0, 4000];
-						const textField = new TextInputBuilder()
-							.setCustomId(`textInput`)
-							.setStyle(option.style ?? TextInputStyle.Short)
-							.setLabel('New value')
-							.setMinLength(min ?? 0)
-							.setMaxLength(max ?? 4000)
-							.setValue(groupData[option.path] ?? '')
-							.setRequired(true)
-							;
-
-						const modal = new ModalBuilder()
-							.setComponents([new ActionRowBuilder<TextInputBuilder>().setComponents([textField])])
-							.setCustomId(`concord:settings/${i.id}`)
-							.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`);
-
-						i.showModal(modal);
-
-						const modalInteraction = await i.awaitModalSubmit({
-							time: 999000,
-							filter: Constants.BaseModalFilter(i, modal.data.custom_id!)
-						});
-
-						const newValue = modalInteraction.fields.getTextInputValue('textInput');
-
-						const validationCheck = await fromAsync<void, Error>(() => option.validate(newValue, group));
-
-						if (!isOk(validationCheck)) {
-							if (!modalInteraction.isFromMessage()) return;
-							return modalInteraction.update({ embeds: [this.appendCurrentValue(option, groupData, validationCheck.error)] });
+					switch (i.customId) {
+						case 'settings/resetToDefault': {
+							newValue = setting.default;
+							break;
 						}
+						case 'settings/toggle': {
+							newValue = !groupData[setting.path];
+							break;
+						}
+						case 'settings/setNewValue': {
+							const result = (await this.getNewValue(baseOptions))!;
 
-						updateGroup({ newValue, option, group, interaction: modalInteraction });
+							newValue = result.newValue;
+							interaction = result.interaction as ModalMessageModalSubmitInteraction<'cached'>;
+
+							break;
+						}
 					}
 				}
+
+				const result = await this.updateGroup({ ...baseOptions, newValue });
+
+				//@ts-expect-error
+				interaction[interaction.deferred || interaction.replied ? 'editReply' : 'update']({
+					embeds: [
+						this.renderEmbed(setting, {
+							group,
+							currentValue: isOk(result) ? result.value : groupData[setting.path],
+							errorMessage: isOk(result) ? undefined : result.error.message
+						})
+					]
+				});
 			})
-			.on('end', () => {
-				interaction.editReply({ components: [] });
+			.on('end', (_, reason) => {
+				if (reason === 'idle') {
+					interaction.editReply({ components: this.renderComponents(setting, true) });
+				}
 			});
-
-		type UpdateGroupOption = {
-			newValue: string | number | boolean | null;
-			option: Setting;
-			group: Group;
-			interaction: any;
-		};
-		const updateGroup = ({ group, interaction, newValue, option }: UpdateGroupOption) => {
-			groupData[option.path] = newValue;
-
-			group.edit(Util.unflatten(groupData));
-			interaction[interaction.replied ? 'editReply' : 'update']({
-				embeds: [this.appendCurrentValue(option, groupData)]
-			});
-		};
 	}
 
-	public override autocompleteRun(interaction: AutocompleteInteraction) {
-		const focusedValue = interaction.options.getFocused(true);
+	public override autocompleteRun(interaction: AutocompleteInteraction<'cached'>) {
+		const focused = interaction.options.getFocused(true);
+		const typing = String(focused.value);
 
-		const value = String(focusedValue.value);
+		switch (focused.name) {
+			case 'target-group': {
+				return AutocompleteCommon.groupAutocomplete(interaction, true);
+			}
 
-		switch (focusedValue.name) {
-			case 'option-name':
-				if (!value.length)
-					return interaction.respond(Settings.map((i) => ({ name: `${i.help?.category}: ${i.name}`, value: i.path })).slice(0, 25));
+			case 'option-name': {
+				if (!typing.length)
+					return interaction.respond(Settings.map((i) => ({ name: `${i.category}: ${i.name}`, value: i.path })).slice(0, 25));
 
 				const fuse = new Fuse(Settings, {
-					keys: ['name', 'help.category'],
-					includeScore: true,
-					shouldSort: true
+					keys: ['name', 'category']
 				});
+				const results = fuse.search(typing);
+				return interaction.respond(results.map((i) => ({ name: `${i.item.category}: ${i.item.name}`, value: i.item.path })).slice(0, 25));
+			}
 
-				const results = fuse.search(value);
-
-				return interaction.respond(
-					results.map((i) => ({ name: `${i.item.help?.category}: ${i.item.name}`, value: i.item.path })).slice(0, 25)
-				);
-			case 'target-group':
-				const coll = interaction.client.groups.cache.filter((i) => i.ownerId === interaction.user.id);
-
-				return interaction.respond(
-					coll
-						.filter((i) => i.tag.startsWith(value))
-						.map((e) => ({ name: e.tag, value: e.id }))
-						.sort()
-				);
-			default:
-				return interaction.respond([]);
+			default: {
+				return;
+			}
 		}
 	}
 
-	private appendCurrentValue(option: Setting, flattenedGroup: { [key: string]: any }, validationError?: Error) {
-		const isParagraph = option.isString() && option.style === TextInputStyle.Paragraph;
-		const data = Util.escapeMaskedLink(Util.escapeQuote(String(flattenedGroup[option.path])));
+	public renderComponents(setting: Setting, isDisabled: boolean = false) {
+		const resetButton = new ButtonBuilder()
+			.setCustomId('settings/resetToDefault')
+			.setLabel('Reset to default')
+			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(isUndefined(setting.default) || isDisabled);
 
-		const embed = this.parseOption(option, flattenedGroup.tag).addFields([
-			{
-				name: 'Current value',
-				value: isParagraph ? data : Formatters.inlineCode(data),
-				inline: !isParagraph
-			}
-		]);
+		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents([resetButton]);
+		const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
 
-		if (validationError)
-			embed.addFields([
-				{
-					name: '\u200b',
-					value:  `\n\n⚠ **ValidationError:** ${validationError.message}`
-				}
-			]);
+		if (setting.isInputtable()) {
+			const setNewValueButton = new ButtonBuilder()
+				.setCustomId('settings/setNewValue')
+				.setLabel('Set new value')
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(isDisabled);
+			baseButtonActionRow.setComponents([setNewValueButton, resetButton]);
+		}
 
-		return embed;
+		if (setting.isChoices()) {
+			const choiceMenu = new SelectMenuBuilder()
+				.setCustomId('settings/menu')
+				.setMaxValues(1)
+				.setMinValues(1)
+				.setPlaceholder('Choose an option...')
+				.setOptions(setting.options.map((option) => ({ label: option.name, value: String(option.value) })))
+				.setDisabled(isDisabled);
+			baseSelectMenuActionRow.setComponents([choiceMenu]);
+		}
+
+		if (setting.isBoolean()) {
+			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle');
+			baseButtonActionRow.setComponents([toggleButton, resetButton]);
+		}
+
+		return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];
 	}
 
-	private parseOption(option: Setting, groupTag: string) {
+	public renderEmbed(setting: Setting, dynamicValue: DynamicValueOption) {
+		const isParagraph = (setting.isString() || setting.isImage()) && setting.format.style === TextInputStyle.Paragraph;
+
+		const { group, currentValue, errorMessage } = dynamicValue;
+		const inline = true;
+
 		const embed = new EmbedBuilder()
-			.setAuthor({ name: `in: ${option.help?.category ?? 'Uncategorized'}` })
-			.setDescription(option.description?.length ? option.description : 'No description provided.')
-			.setTitle(`${option.help?.category ?? 'Unknown'}: ${option.name}`)
+			.setDescription(setting.description || 'No description available.')
+			.setAuthor({ name: `in: ${setting.category}` })
+			.setTitle(`${setting.category}: ${setting.name}`)
 			.setFooter({
-				text: `Currently setting: '@${groupTag}'. Option type: '${option.type}'.`
-			})
-			.addFields([
+				text: `Currently setting: '@${group.tag}'. Option type: '${setting.type}'.`
+			});
+
+		// Displaying default value.
+		if (!isUndefined(setting.default)) {
+			embed.addFields([{ name: 'Default value', value: this._formatNullable(setting.default, !isParagraph), inline }]);
+		}
+
+		// Displaying current value
+		if (!isUndefined(currentValue)) {
+			embed.addFields([
 				{
-					name: 'Default value',
-					value: Formatters.inlineCode(String(option.default)),
-					inline: true
+					name: 'Current value',
+					value: this._formatNullable(currentValue, !isParagraph),
+					inline
 				}
 			]);
+		}
 
-		if (option.isChoices()) {
+		if (setting.isImage()) {
+			embed[setting.format.preview](currentValue);
+		}
+
+		if (setting.isChoices()) {
 			embed.spliceFields(0, 0, {
 				name: 'Available options',
-				value: option.options
+				value: setting.options
 					.map(
 						(e) =>
 							`> **${e.name}** (${Formatters.inlineCode(String(e.value))})\n${
@@ -249,35 +246,120 @@ export class SettingsCommand extends Command {
 			});
 		}
 
+		// Display error message.
+		if (errorMessage)
+			embed.addFields([
+				{
+					name: '\u200b',
+					value: `\n\n⚠ **ValidationError:** ${errorMessage}`
+				}
+			]);
+
 		return embed;
 	}
 
-	private renderComponents(setting: Setting) {
-		const resetButton = new ButtonBuilder().setCustomId('settings/resetToDefault').setLabel('Reset to default').setStyle(ButtonStyle.Secondary);
+	private _formatNullable(value: any, format: boolean = true) {
+		let result;
 
-		const baseButtonActionRow = new ActionRowBuilder<ButtonBuilder>().setComponents([resetButton]);
-		const baseSelectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>();
+		if (format) result = Formatters.inlineCode(value);
+
+		if (isUndefined(value) || isNull(value) || (!isNumber(value) && isEmpty(value))) {
+			result = 'Not set'
+		}
+		return String(result ?? value);
+	}
+
+	public async getNewValue(options: HandlerOption) {
+		const { setting, interaction, data } = options;
+
+		if (!setting.isInputtable()) return;
+
+		const modalId = interaction.id;
+		const textField = this.renderTextField(setting as StringSetting | ImageSetting).setValue(String(data[setting.path]) ?? '');
+		const modal = this.renderModal([textField], setting as StringSetting | ImageSetting).setCustomId(modalId);
+
+		await interaction.showModal(modal);
+
+		try {
+			const modalInteraction = await interaction.awaitModalSubmit({ time: 999_000, filter: Constants.BaseModalFilter(interaction, modalId) });
+
+			const newValue = modalInteraction.fields.getTextInputValue('concord:settings/textInput');
+
+			return {
+				interaction: modalInteraction,
+				newValue: newValue
+			};
+		} catch {
+			return;
+		}
+	}
+
+	public async updateGroup(options: Omit<HandlerOption, 'interaction'> & { newValue: any }) {
+		const { data, group, setting } = options;
+
+		const result = await this.validateValue(options);
+
+		if (!isOk(result)) {
+			return result;
+		}
+
+		data[setting.path] = result.value;
+		group.edit(Util.unflatten(data));
+
+		return result;
+	}
+
+	public async validateValue(options: Pick<HandlerOption, 'setting' | 'group'> & { newValue: any }) {
+		const { newValue, setting, group } = options;
+
+		if (setting.isChoices() || setting.isInputtable()) {
+			//@ts-expect-error
+			return await setting.validate(newValue, group);
+		} else {
+			return ok(newValue);
+		}
+	}
+
+	public renderTextField(setting: StringSetting | ImageSetting) {
+		const textField = new TextInputBuilder()
+			.setCustomId(`concord:settings/textInput`)
+			.setLabel('New value')
+			.setStyle(setting.format.style)
+			.setRequired(!setting.nullable);
 
 		if (setting.isString()) {
-			const setNewValueButton = new ButtonBuilder().setCustomId('settings/setNewValue').setLabel('Set new value').setStyle(ButtonStyle.Primary);
-			baseButtonActionRow.setComponents([setNewValueButton, resetButton]);
+			const { maxLength, minLength } = setting.restraints;
+			return textField.setMinLength(minLength).setMaxLength(maxLength);
+		}
+		if (setting.isNumber()) {
+			const { maxValue, minValue } = setting.restraints
+
+			const maxLength = maxValue === Infinity ? String(Number.MAX_SAFE_INTEGER).length - 1 : String(maxValue).length
+			const minLength = minValue === -Infinity ? String(Number.MIN_SAFE_INTEGER).length - 1 : String(minValue).length
+
+			return textField.setMinLength(minLength).setMaxLength(maxLength)
 		}
 
-		if (setting.isBoolean()) {
-			const toggleButton = new ButtonBuilder().setCustomId('settings/toggle').setLabel('Toggle').setStyle(ButtonStyle.Primary);
-			baseButtonActionRow.setComponents([toggleButton, resetButton]);
-		}
-
-		if (setting.isChoices()) {
-			const choiceMenu = new SelectMenuBuilder()
-				.setCustomId('settings/menu')
-				.setMaxValues(1)
-				.setMinValues(1)
-				.setPlaceholder('Choose an option...')
-				.setOptions(setting.options.map((option) => ({ label: option.name, value: String(option.value) })));
-
-			baseSelectMenuActionRow.setComponents([choiceMenu]);
-		}
-		return baseSelectMenuActionRow.components.length ? [baseSelectMenuActionRow, baseButtonActionRow] : [baseButtonActionRow];
+		return textField;
 	}
+
+	public renderModal(components: TextInputBuilder[], setting: StringSetting | ImageSetting) {
+		const actionRow = new ActionRowBuilder<TextInputBuilder>().setComponents(components);
+
+		return new ModalBuilder().setTitle(`${setting.category}: ${setting.name}`).setComponents([actionRow]);
+	}
+}
+
+type DynamicValueOption = {
+	group: Group;
+	errorMessage?: string;
+	currentValue?: any;
+};
+type HandlerOption = Omit<GroupUpdateOptions, 'value'>;
+interface GroupUpdateOptions {
+	value: string | boolean | number | null;
+	group: Group;
+	data: { [key: string]: any };
+	setting: Setting;
+	interaction: MessageComponentInteraction;
 }

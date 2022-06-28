@@ -6,13 +6,14 @@ export enum Events {
 	GroupUpdate = 'groupUpdate'
 }
 export enum SettingCategory {
-	Appearances = 'Appearances'
+	Appearances = 'Appearances',
+	Security = 'Security',
+	Requests = 'Requests'
 }
 
-export enum BanType {
+export enum BanTargetType {
 	User = 'user',
 	Guild = 'guild',
-	Global = 'global'
 }
 
 export declare const GroupPermissionsFlagBits: {
@@ -32,7 +33,14 @@ export declare const GroupPermissionsFlagBits: {
 export enum SettingType {
 	String = 'string',
 	Choices = 'choices',
-	Boolean = 'boolean'
+	Boolean = 'boolean',
+	Number = 'number',
+	Image = 'image'
+}
+
+export enum PreviewLocation {
+	Thumbnail = 'setThumbnail',
+	Image = 'setImage'
 }
 
 export enum RequestType {

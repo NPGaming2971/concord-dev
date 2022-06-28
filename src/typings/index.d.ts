@@ -1,31 +1,23 @@
-import type { Result } from '@sapphire/shapeshift';
-import type { Awaitable, ChannelResolvable, LocaleString, Message, NewsChannel, TextChannel, User, UserResolvable } from 'discord.js';
+import type { ChannelResolvable, LocaleString, Message, NewsChannel, TextChannel, TextInputStyle, User, UserResolvable, VoiceChannel } from 'discord.js';
 import type { APIMessage } from 'discord.js';
 import type { Ban, ChannelRegistry, Group } from '../structures/';
-import type { BanType, GroupPermissionsFlagBits, GroupStatusType, RequestState, RequestType, SettingCategory, SettingType } from './enums';
+import type { BanTargetType, GroupPermissionsFlagBits, GroupStatusType, PreviewLocation, RequestState, RequestType, SettingCategory, SettingType } from './enums';
 
 export type Maybe<T> = T | null;
 export type DeepPartial<T> = Partial<{ [P in keyof T]: DeepPartial<T[P]> }>;
-export type CommandAndEventLoadOptions = {
-	errorOnNoMatches?: boolean;
-	errorOnEmptyFile?: boolean;
-};
+export type DeepNonNull<T> = NonNullable<{ [P in keyof T]: DeepNonNull<T[P]> }>;
 
-export type PathsToStringProps<T> = T extends string
-	? []
-	: {
-			[K in Extract<keyof T, string>]: [K, ...PathsToStringProps<T[K]>];
-	  }[Extract<keyof T, string>];
-
-export type Join<T extends string[], D extends string> = T extends []
+export type PathImpl<T, K extends keyof T> = K extends object
 	? never
-	: T extends [infer F]
-	? F
-	: T extends [infer F, ...infer R]
-	? F extends string
-		? `${F}${D}${Join<Extract<R, string[]>, D>}`
-		: never
-	: string;
+	: K extends string
+	? T[K] extends Record<string, any>
+		? T[K] extends ArrayLike<any>
+			? K | `${K}.${PathImpl<T[K], Exclude<keyof T[K], keyof any[]>>}`
+			: K | `${K}.${PathImpl<T[K], keyof T[K]>}`
+		: K
+	: never;
+
+export type Path<T> = PathImpl<T, keyof T> | keyof T;
 
 export type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U];
 
@@ -36,39 +28,38 @@ export type CommandLoadOptions = {
 		commands: string;
 		events: string;
 	}>;
-	options?: {
-		/**
-		 * Accepted file extensions. Default to ['ts'].
-		 */
-		extensions?: string[];
-		subfolderDepth?: number;
-		deploy?: boolean;
-		errorOnNoMatches?: boolean;
-		errorOnEmptyFile?: boolean;
-	};
+	/**
+	 * Accepted file extensions. Default to ['ts'].
+	 */
+	extensions?: string[];
+	subfolderDepth?: number;
+	deploy?: boolean;
+	root?: string
+	errors?: CommandLoadError[];
 };
+
+export type CommandLoadError = 'NoMatches' | 'EmptyFile'
 
 export type NonNullObject = {} & object;
 
 export type BanResolvable = string | ChannelResolvable | UserResolvable | Ban;
 
 export interface BaseAPIBan {
-	target: string;
-	executor: string;
+	id: string
+	targetId: string;
+	executorId: string;
 	reason: Maybe<string>;
-	type: BanType;
+	targetType: BanTargetType;
 	location: Maybe<string>;
 	until: Maybe<number>;
 }
 
-export interface BaseAPIGroupBan extends BaseAPIBan {
-	type: BanType.Guild | BanType.User;
-	location: string;
+export interface APIGlobalBan extends BaseAPIBan {
+	location: null
 }
 
-export interface BaseAPIGlobalBan extends BaseAPIBan {
-	type: BanType.Global;
-	location: null;
+export interface APIGroupBan extends BaseAPIBan {
+	location: string
 }
 
 export interface APIGroupMessage {
@@ -94,19 +85,46 @@ export interface APIGroupRequest {
 	state: RequestState;
 }
 
-type APISettingData = APIStringSetting | APIChoicesSetting;
+type APISettingData = APIStringSetting | APIChoicesSetting | APINumberSetting | APIImageSetting;
 
-interface APIStringSetting extends BaseAPISetting {
-	type: SettingType.String;
-	validate?: (value: string, group?: Group) => string;
+interface APINumberSetting extends BaseAPISetting {
+	type: SettingType.Number;
+	validate?: (value: number, group?: Group) => number;
 	restraints?: {
-		maxLength?: number;
-		minLength?: number;
+		maxValue?: number;
+		minValue?: number;
 	};
 }
 
+interface APIImageSetting extends BaseAPISetting {
+	type: SettingType.Image;
+	validate?: (value: string, group?: Group) => Maybe<string>;
+	restraints?: {
+		maxWidth?: number;
+		maxHeight?: number;
+		allowEmpty?: boolean
+	};
+	preview?: PreviewLocation
+}
+
+interface APIStringSetting extends BaseAPISetting {
+	type: SettingType.String;
+	validate?: (value: string, group?: Group) => Maybe<string>;
+	restraints?: {
+		maxLength?: number;
+		minLength?: number;
+		/**
+		 * Whether to allow empty string as a valid value.  
+		 * If this is `false`, empty string will be automatically converted to `null`.  
+		 * If this is `true`, `validate()` function will have to handle empty string itself.
+		 */
+		allowEmpty?: boolean
+	};
+	style?: TextInputStyle;
+}
+
 interface APIChoicesSetting extends BaseAPISetting {
-	validate?: (value: string, group: Group | undefined) => string;
+	validate?: (value: string, group?: Group) => string;
 	options: Choice[];
 	type: SettingType.Choices;
 	default?: string | null;
@@ -132,12 +150,12 @@ interface BaseAPISetting {
 	/**
 	 * The dots path of the target property of the group object where this setting will modify.
 	 */
-	path: Join<PathsToStringProps<APIGroup>, '.'>;
+	path: Path<APIGroup>;
 
 	/**
 	 * The default value for this settings.
 	 */
-	default?: string | boolean | number | null;
+	default?: string | number | boolean | null;
 
 	/**
 	 * The type of this setting.
@@ -149,7 +167,17 @@ interface BaseAPISetting {
 		preview?: '';
 	};
 
-	preconditions?: (group: Group, user?: User) => any
+	/**
+	 * Whether this setting can be null
+	 */
+	nullable?: boolean;
+
+	/**
+	 * Whether to force use ephemeral for this setting
+	 */
+	ephemeral?: boolean;
+
+	preconditions?: (group: Group, user?: User) => any;
 }
 
 export interface APIGroup {
@@ -193,7 +221,7 @@ export interface APIChannelRegistry {
 
 export type GroupResolvable = string | ChannelRegistry | Group;
 
-export type RegisterableChannel = TextChannel | NewsChannel;
+export type RegisterableChannel = TextChannel | NewsChannel | VoiceChannel;
 
 export type RegistryCreateOptions = {
 	channelId: RegisterableChannel | string;
